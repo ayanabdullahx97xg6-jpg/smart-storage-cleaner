@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Storage Cleaner</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-icon">✦</div>
+      <div>
+        <h2>Storage Cleaner</h2>
+        <span>Smart • Private • Offline</span>
+      </div>
+    </div>
+
+    <nav>
+      <button class="nav-item active" data-section="dashboard">
+        <span>▦</span> Dashboard
+      </button>
+
+      <button class="nav-item" data-section="large">
+        <span>◈</span> Large Files
+      </button>
+
+      <button class="nav-item" data-section="duplicates">
+        <span>◫</span> Duplicates
+      </button>
+
+      <button class="nav-item" data-section="old">
+        <span>◷</span> Old Files
+      </button>
+
+      <button class="nav-item" data-section="empty">
+        <span>□</span> Empty Folders
+      </button>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <div class="privacy">
+        <span>🔒</span>
+        <div>
+          <strong>Private Scan</strong>
+          <small>Your files stay in your browser</small>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">SMART STORAGE ANALYSIS</p>
+        <h1>Storage Cleaner</h1>
+        <p class="subtitle">
+          Find what's taking up space and decide what you want to clean.
+        </p>
+      </div>
+
+      <button id="selectFolderBtn" class="primary-btn">
+        Select Folder
+      </button>
+    </header>
+
+    <section id="dashboard" class="section active">
+
+      <div class="hero">
+        <div>
+          <span class="hero-label">STORAGE OVERVIEW</span>
+          <h2>Understand your files before cleaning.</h2>
+          <p>
+            Scan a folder to discover large files, old files,
+            duplicates and empty folders.
+          </p>
+        </div>
+
+        <div class="scan-circle">
+          <span>READY</span>
+        </div>
+      </div>
+
+      <div class="stats">
+
+        <div class="stat-card">
+          <span class="stat-icon">◫</span>
+          <div>
+            <small>Total Files</small>
+            <strong id="totalFiles">0</strong>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <span class="stat-icon">◈</span>
+          <div>
+            <small>Total Size</small>
+            <strong id="totalSize">0 B</strong>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <span class="stat-icon">!</span>
+          <div>
+            <small>Large Files</small>
+            <strong id="largeCount">0</strong>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <span class="stat-icon">◫</span>
+          <div>
+            <small>Duplicates</small>
+            <strong id="duplicateCount">0</strong>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="content-grid">
+
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <span class="panel-kicker">ANALYSIS</span>
+              <h3>What needs attention?</h3>
+            </div>
+          </div>
+
+          <div class="attention-list">
+
+            <button class="attention-item" data-section="large">
+              <div class="attention-icon">◈</div>
+              <div class="attention-text">
+                <strong>Large Files</strong>
+                <span>Files larger than 500 MB</span>
+              </div>
+              <b id="largeAttention">0</b>
+              <span>›</span>
+            </button>
+
+            <button class="attention-item" data-section="duplicates">
+              <div class="attention-icon">◫</div>
+              <div class="attention-text">
+                <strong>Duplicate Files</strong>
+                <span>Files with identical content</span>
+              </div>
+              <b id="duplicateAttention">0</b>
+              <span>›</span>
+            </button>
+
+            <button class="attention-item" data-section="old">
+              <div class="attention-icon">◷</div>
+              <div class="attention-text">
+                <strong>Old Files</strong>
+                <span>Files not modified for 180+ days</span>
+              </div>
+              <b id="oldAttention">0</b>
+              <span>›</span>
+            </button>
+
+            <button class="attention-item" data-section="empty">
+              <div class="attention-icon">□</div>
+              <div class="attention-text">
+                <strong>Empty Folders</strong>
+                <span>Folders containing no files</span>
+              </div>
+              <b id="emptyAttention">0</b>
+              <span>›</span>
+            </button>
+
+          </div>
+        </div>
+
+        <div class="panel tips">
+          <span class="panel-kicker">SAFE CLEANING</span>
+          <h3>Before deleting anything</h3>
+
+          <div class="tip">
+            <span>01</span>
+            <p>Review the file before removing it.</p>
+          </div>
+
+          <div class="tip">
+            <span>02</span>
+            <p>Keep important personal and system files.</p>
+          </div>
+
+          <div class="tip">
+            <span>03</span>
+            <p>Only remove files you recognize.</p>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <section id="large" class="section">
+      <div class="section-heading">
+        <div>
+          <span class="panel-kicker">ANALYSIS</span>
+          <h2>Large Files</h2>
+          <p>Files larger than 500 MB.</p>
+        </div>
+      </div>
+
+      <div id="largeFilesList" class="file-list">
+        <div class="empty-state">No scan performed yet.</div>
+      </div>
+    </section>
+
+    <section id="duplicates" class="section">
+      <div class="section-heading">
+        <div>
+          <span class="panel-kicker">ANALYSIS</span>
+          <h2>Duplicate Files</h2>
+          <p>Files with identical content.</p>
+        </div>
+      </div>
+
+      <div id="duplicatesList" class="file-list">
+        <div class="empty-state">No scan performed yet.</div>
+      </div>
+    </section>
+
+    <section id="old" class="section">
+      <div class="section-heading">
+        <div>
+          <span class="panel-kicker">ANALYSIS</span>
+          <h2>Old Files</h2>
+          <p>Files that haven't been modified for 180+ days.</p>
+        </div>
+      </div>
+
+      <div id="oldFilesList" class="file-list">
+        <div class="empty-state">No scan performed yet.</div>
+      </div>
+    </section>
+
+    <section id="empty" class="section">
+      <div class="section-heading">
+        <div>
+          <span class="panel-kicker">ANALYSIS</span>
+          <h2>Empty Folders</h2>
+          <p>Folders containing no files or subfolders.</p>
+        </div>
+      </div>
+
+      <div id="emptyFoldersList" class="file-list">
+        <div class="empty-state">No scan performed yet.</div>
+      </div>
+    </section>
+
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
