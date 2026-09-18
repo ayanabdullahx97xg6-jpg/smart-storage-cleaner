@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Smart Storage Cleaner</title>
+  <meta name="description" content="Smart Storage Cleaner - private browser-based storage analysis">
+  <title>Storage Cleaner</title>
   <link rel="stylesheet" href="style.css">
 </head>
 
@@ -15,56 +16,51 @@
       <div class="brand-icon">✦</div>
 
       <div>
-        <h2>Storage Cleaner</h2>
-        <span>Smart • Private • Offline</span>
+        <div class="brand-name">Storage Cleaner</div>
+        <div class="brand-subtitle">Smart · Private · Offline</div>
       </div>
     </div>
 
-    <nav>
+    <nav class="nav">
 
       <button class="nav-item active" data-section="dashboard">
         <span>▦</span>
-        Dashboard
+        <span>Dashboard</span>
       </button>
 
       <button class="nav-item" data-section="large">
-        <span>◈</span>
-        Large Files
+        <span>◇</span>
+        <span>Large Files</span>
       </button>
 
       <button class="nav-item" data-section="duplicates">
-        <span>◫</span>
-        Duplicates
+        <span>▣</span>
+        <span>Duplicates</span>
       </button>
 
       <button class="nav-item" data-section="old">
         <span>◷</span>
-        Old Files
+        <span>Old Files</span>
       </button>
 
       <button class="nav-item" data-section="types">
         <span>◉</span>
-        File Types
+        <span>File Types</span>
       </button>
 
       <button class="nav-item" data-section="folders">
         <span>▤</span>
-        Folders
+        <span>Folders</span>
       </button>
 
     </nav>
 
-    <div class="sidebar-bottom">
-
-      <div class="privacy">
-        <span>🔒</span>
-
-        <div>
-          <strong>Private Scan</strong>
-          <small>Files stay in your browser</small>
-        </div>
+    <div class="privacy-card">
+      <div class="privacy-icon">🔒</div>
+      <div>
+        <strong>Private Scan</strong>
+        <span>Files stay in your browser</span>
       </div>
-
     </div>
 
   </aside>
@@ -75,96 +71,98 @@
     <header class="topbar">
 
       <div>
-        <p class="eyebrow">SMART STORAGE ANALYSIS</p>
-
+        <div class="eyebrow">SMART STORAGE ANALYSIS</div>
         <h1>Storage Cleaner</h1>
-
-        <p class="subtitle">
-          Find what's taking up space and understand your storage.
-        </p>
+        <p>Find what's taking up space and understand your storage.</p>
       </div>
 
-      <button id="selectFolderBtn" class="primary-btn">
-        Select Folder
-      </button>
+      <div class="top-actions">
+        <button id="selectFolderBtn" class="primary-btn">
+          Select Folder
+        </button>
+
+        <button id="rescanBtn" class="secondary-btn hidden">
+          ↻ Rescan
+        </button>
+      </div>
 
     </header>
 
 
-    <!-- DASHBOARD -->
+    <!-- SCAN STATUS -->
 
-    <section id="dashboard" class="section active">
+    <section id="scanStatus" class="scan-status hidden">
 
-      <div class="hero">
-
+      <div class="scan-status-top">
         <div>
-
-          <span class="hero-label">
-            STORAGE OVERVIEW
-          </span>
-
-          <h2>
-            Understand your files before cleaning.
-          </h2>
-
-          <p>
-            Scan a folder to discover large files, duplicates,
-            old files and storage usage.
-          </p>
-
-          <div class="scan-status">
-            <span id="scanStatusDot"></span>
-            <span id="scanStatus">Ready to scan</span>
-          </div>
-
+          <strong id="scanStatusTitle">Scanning folder...</strong>
+          <span id="scanStatusText">Preparing scan...</span>
         </div>
 
-        <div class="scan-circle">
-          <span id="scanCircleText">READY</span>
+        <strong id="scanPercent">0%</strong>
+      </div>
+
+      <div class="progress-track">
+        <div id="scanProgress" class="progress-fill"></div>
+      </div>
+
+    </section>
+
+
+    <!-- DASHBOARD -->
+
+    <section id="dashboard" class="page-section active">
+
+      <div class="hero-card">
+
+        <div>
+          <div class="eyebrow">STORAGE OVERVIEW</div>
+
+          <h2>Understand your files before cleaning.</h2>
+
+          <p>
+            Scan a folder to discover large files, old files,
+            duplicates and storage usage.
+          </p>
+        </div>
+
+        <div id="readyCircle" class="ready-circle">
+          READY
         </div>
 
       </div>
 
 
-      <!-- STATS -->
-
-      <div class="stats">
+      <div class="stats-grid">
 
         <div class="stat-card">
-          <span class="stat-icon">◫</span>
-
+          <div class="stat-icon">▣</div>
           <div>
-            <small>Total Files</small>
+            <span>Total Files</span>
             <strong id="totalFiles">0</strong>
           </div>
         </div>
 
-
         <div class="stat-card">
-          <span class="stat-icon">◈</span>
-
+          <div class="stat-icon">◇</div>
           <div>
-            <small>Total Size</small>
+            <span>Total Size</span>
             <strong id="totalSize">0 B</strong>
           </div>
         </div>
 
-
         <div class="stat-card">
-          <span class="stat-icon">!</span>
-
+          <div class="stat-icon">!</div>
           <div>
-            <small>Large Files</small>
+            <span>Large Files</span>
             <strong id="largeCount">0</strong>
           </div>
         </div>
 
-
         <div class="stat-card">
-          <span class="stat-icon">◫</span>
-
+          <div class="stat-icon">▣</div>
           <div>
-            <small>Duplicates</small>
+            <span>Duplicates</span>
             <strong id="duplicateCount">0</strong>
           </div>
         </div>
@@ -172,152 +170,76 @@
       </div>
 
 
-      <div class="content-grid">
-
-
-        <!-- ATTENTION -->
+      <div class="dashboard-grid">
 
         <div class="panel">
 
-          <div class="panel-header">
-
+          <div class="panel-heading">
             <div>
-              <span class="panel-kicker">
-                ANALYSIS
-              </span>
-
-              <h3>
-                What needs attention?
-              </h3>
+              <div class="eyebrow">ANALYSIS</div>
+              <h3>What needs attention?</h3>
             </div>
-
           </div>
-
 
           <div class="attention-list">
 
-            <button class="attention-item" data-section="large">
+            <button class="attention-row" data-section="large">
+              <span class="attention-icon">◇</span>
 
-              <div class="attention-icon">
-                ◈
-              </div>
+              <span class="attention-info">
+                <strong>Large Files</strong>
+                <small>Files larger than your selected threshold</small>
+              </span>
 
-              <div class="attention-text">
-
-                <strong>
-                  Large Files
-                </strong>
-
-                <span>
-                  Files larger than 500 MB
-                </span>
-
-              </div>
-
-              <b id="largeAttention">0</b>
-
-              <span>›</span>
-
+              <span id="attentionLarge">0 ›</span>
             </button>
 
 
-            <button class="attention-item" data-section="duplicates">
+            <button class="attention-row" data-section="duplicates">
+              <span class="attention-icon">▣</span>
 
-              <div class="attention-icon">
-                ◫
-              </div>
+              <span class="attention-info">
+                <strong>Duplicate Files</strong>
+                <small>Files with identical content</small>
+              </span>
 
-              <div class="attention-text">
-
-                <strong>
-                  Duplicate Files
-                </strong>
-
-                <span>
-                  Identical file contents
-                </span>
-
-              </div>
-
-              <b id="duplicateAttention">0</b>
-
-              <span>›</span>
-
+              <span id="attentionDuplicates">0 ›</span>
             </button>
 
 
-            <button class="attention-item" data-section="old">
+            <button class="attention-row" data-section="old">
+              <span class="attention-icon">◷</span>
 
-              <div class="attention-icon">
-                ◷
-              </div>
+              <span class="attention-info">
+                <strong>Old Files</strong>
+                <small>Files not modified for 180+ days</small>
+              </span>
 
-              <div class="attention-text">
-
-                <strong>
-                  Old Files
-                </strong>
-
-                <span>
-                  Files not modified for 180+ days
-                </span>
-
-              </div>
-
-              <b id="oldAttention">0</b>
-
-              <span>›</span>
-
+              <span id="attentionOld">0 ›</span>
             </button>
 
 
-            <button class="attention-item" data-section="types">
+            <button class="attention-row" data-section="types">
+              <span class="attention-icon">◉</span>
 
-              <div class="attention-icon">
-                ◉
-              </div>
+              <span class="attention-info">
+                <strong>File Types</strong>
+                <small>See what is consuming space</small>
+              </span>
 
-              <div class="attention-text">
-
-                <strong>
-                  File Types
-                </strong>
-
-                <span>
-                  See what is consuming space
-                </span>
-
-              </div>
-
-              <b id="typeAttention">0</b>
-
-              <span>›</span>
-
+              <span id="attentionTypes">0 ›</span>
             </button>
 
 
-            <button class="attention-item" data-section="folders">
+            <button class="attention-row" data-section="folders">
+              <span class="attention-icon">▤</span>
 
-              <div class="attention-icon">
-                ▤
-              </div>
+              <span class="attention-info">
+                <strong>Folders</strong>
+                <small>Storage usage by folder</small>
+              </span>
 
-              <div class="attention-text">
-
-                <strong>
-                  Folders
-                </strong>
-
-                <span>
-                  Storage usage by folder
-                </span>
-
-              </div>
-
-              <b id="folderAttention">0</b>
-
-              <span>›</span>
-
+              <span id="attentionFolders">0 ›</span>
             </button>
 
           </div>
@@ -325,24 +247,19 @@
         </div>
 
 
-        <!-- STORAGE SUMMARY -->
-
         <div class="panel">
 
-          <span class="panel-kicker">
-            STORAGE MIX
-          </span>
-
-          <h3>
-            Where is your space going?
-          </h3>
+          <div class="panel-heading">
+            <div>
+              <div class="eyebrow">STORAGE MIX</div>
+              <h3>Where is your space going?</h3>
+            </div>
+          </div>
 
           <div id="storageMix" class="storage-mix">
-
-            <div class="empty-mini">
-              Scan a folder to see storage usage.
+            <div class="empty-message">
+              Scan a folder to see storage distribution.
             </div>
-
           </div>
 
         </div>
@@ -350,37 +267,30 @@
       </div>
 
 
-      <!-- RECENT SCAN -->
+      <div class="panel safe-panel">
 
-      <div class="panel recent-panel">
-
-        <div class="panel-header">
-
+        <div class="panel-heading">
           <div>
-
-            <span class="panel-kicker">
-              SCAN RESULTS
-            </span>
-
-            <h3>
-              Largest files
-            </h3>
-
+            <div class="eyebrow">SAFE CLEANING</div>
+            <h3>Before deleting anything</h3>
           </div>
-
-          <button
-            class="text-btn"
-            data-section="large"
-          >
-            View all →
-          </button>
-
         </div>
 
-        <div id="dashboardLargeFiles" class="mini-files">
+        <div class="safe-list">
 
-          <div class="empty-state">
-            No scan performed yet.
+          <div>
+            <b>01</b>
+            <span>Review the file before removing it.</span>
+          </div>
+
+          <div>
+            <b>02</b>
+            <span>Keep important personal and system files.</span>
+          </div>
+
+          <div>
+            <b>03</b>
+            <span>Only remove files you recognize.</span>
           </div>
 
         </div>
@@ -392,26 +302,14 @@
 
     <!-- LARGE FILES -->
 
-    <section id="large" class="section">
+    <section id="large" class="page-section">
 
-      <div class="section-heading">
-
+      <div class="page-heading">
         <div>
-
-          <span class="panel-kicker">
-            ANALYSIS
-          </span>
-
-          <h2>
-            Large Files
-          </h2>
-
-          <p>
-            Files larger than 500 MB.
-          </p>
-
+          <div class="eyebrow">ANALYSIS</div>
+          <h2>Large Files</h2>
+          <p>Find individual files consuming significant storage.</p>
         </div>
-
       </div>
 
 
@@ -419,25 +317,38 @@
 
         <input
           id="largeSearch"
-          class="search-input"
           type="search"
           placeholder="Search large files..."
         >
 
-        <select id="largeSort" class="sort-select">
-          <option value="size-desc">Largest first</option>
-          <option value="size-asc">Smallest first</option>
-          <option value="name">Name</option>
-          <option value="date">Oldest first</option>
+        <select id="largeThreshold">
+          <option value="524288000">500 MB+</option>
+          <option value="1073741824">1 GB+</option>
+          <option value="5368709120">5 GB+</option>
+          <option value="10737418240">10 GB+</option>
+        </select>
+
+        <select id="largeSort">
+          <option value="desc">Largest first</option>
+          <option value="asc">Smallest first</option>
+          <option value="name">Name A-Z</option>
         </select>
 
       </div>
 
 
-      <div id="largeFilesList" class="file-list">
+      <div class="result-summary">
+        <span id="largeSummary">0 files</span>
+        <span id="largeSpace">0 B</span>
+      </div>
+
+
+      <div id="largeList" class="result-list">
 
         <div class="empty-state">
-          No scan performed yet.
+          <div class="empty-icon">◇</div>
+          <strong>No large files found.</strong>
+          <span>Scan a folder to begin.</span>
         </div>
 
       </div>
@@ -447,48 +358,42 @@
 
     <!-- DUPLICATES -->
 
-    <section id="duplicates" class="section">
+    <section id="duplicates" class="page-section">
 
-      <div class="section-heading">
-
+      <div class="page-heading">
         <div>
+          <div class="eyebrow">CONTENT ANALYSIS</div>
+          <h2>Duplicate Files</h2>
+          <p>Files with identical content detected using SHA-256.</p>
+        </div>
+      </div>
 
-          <span class="panel-kicker">
-            CONTENT ANALYSIS
-          </span>
 
-          <h2>
-            Duplicate Files
-          </h2>
+      <div class="duplicate-stats">
 
-          <p>
-            Files with identical content detected using SHA-256.
-          </p>
+        <div class="stat-card">
+          <div>
+            <span>Duplicate Groups</span>
+            <strong id="duplicateGroups">0</strong>
+          </div>
+        </div>
 
+        <div class="stat-card">
+          <div>
+            <span>Potential Extra Space</span>
+            <strong id="duplicateSpace">0 B</strong>
+          </div>
         </div>
 
       </div>
 
 
-      <div class="duplicate-summary">
-
-        <div>
-          <span>Duplicate Groups</span>
-          <strong id="duplicateGroupsTotal">0</strong>
-        </div>
-
-        <div>
-          <span>Potential Extra Space</span>
-          <strong id="duplicateWaste">0 B</strong>
-        </div>
-
-      </div>
-
-
-      <div id="duplicatesList" class="duplicate-list">
+      <div id="duplicateList" class="duplicate-list">
 
         <div class="empty-state">
-          No scan performed yet.
+          <div class="empty-icon">▣</div>
+          <strong>No duplicate files found.</strong>
+          <span>Scan a folder to detect identical files.</span>
         </div>
 
       </div>
@@ -498,26 +403,14 @@
 
     <!-- OLD FILES -->
 
-    <section id="old" class="section">
+    <section id="old" class="page-section">
 
-      <div class="section-heading">
-
+      <div class="page-heading">
         <div>
-
-          <span class="panel-kicker">
-            AGE ANALYSIS
-          </span>
-
-          <h2>
-            Old Files
-          </h2>
-
-          <p>
-            Files not modified for 180+ days.
-          </p>
-
+          <div class="eyebrow">AGE ANALYSIS</div>
+          <h2>Old Files</h2>
+          <p>Files that have not been modified for 180+ days.</p>
         </div>
-
       </div>
 
 
@@ -525,25 +418,32 @@
 
         <input
           id="oldSearch"
-          class="search-input"
           type="search"
           placeholder="Search old files..."
         >
 
-        <select id="oldSort" class="sort-select">
+        <select id="oldSort">
           <option value="oldest">Oldest first</option>
           <option value="newest">Newest first</option>
-          <option value="size-desc">Largest first</option>
-          <option value="name">Name</option>
+          <option value="largest">Largest first</option>
+          <option value="name">Name A-Z</option>
         </select>
 
       </div>
 
 
-      <div id="oldFilesList" class="file-list">
+      <div class="result-summary">
+        <span id="oldSummary">0 files</span>
+        <span id="oldSpace">0 B</span>
+      </div>
+
+
+      <div id="oldList" class="result-list">
 
         <div class="empty-state">
-          No scan performed yet.
+          <div class="empty-icon">◷</div>
+          <strong>No old files found.</strong>
+          <span>Scan a folder to find files not modified for 180+ days.</span>
         </div>
 
       </div>
@@ -553,33 +453,23 @@
 
     <!-- FILE TYPES -->
 
-    <section id="types" class="section">
+    <section id="types" class="page-section">
 
-      <div class="section-heading">
-
+      <div class="page-heading">
         <div>
-
-          <span class="panel-kicker">
-            STORAGE BREAKDOWN
-          </span>
-
-          <h2>
-            File Types
-          </h2>
-
-          <p>
-            See which types of files consume your storage.
-          </p>
-
+          <div class="eyebrow">FILE ANALYSIS</div>
+          <h2>File Types</h2>
+          <p>See which categories consume the most space.</p>
         </div>
-
       </div>
 
 
-      <div id="fileTypesList" class="type-grid">
+      <div id="typeList" class="type-list">
 
         <div class="empty-state">
-          No scan performed yet.
+          <div class="empty-icon">◉</div>
+          <strong>No file type data yet.</strong>
+          <span>Scan a folder to analyze file types.</span>
         </div>
 
       </div>
@@ -589,33 +479,41 @@
 
     <!-- FOLDERS -->
 
-    <section id="folders" class="section">
+    <section id="folders" class="page-section">
 
-      <div class="section-heading">
-
+      <div class="page-heading">
         <div>
-
-          <span class="panel-kicker">
-            FOLDER ANALYSIS
-          </span>
-
-          <h2>
-            Folder Storage
-          </h2>
-
-          <p>
-            See which folders contain the most data.
-          </p>
-
+          <div class="eyebrow">FOLDER ANALYSIS</div>
+          <h2>Folder Storage</h2>
+          <p>See which folders contain the most data.</p>
         </div>
+      </div>
+
+
+      <div class="toolbar">
+
+        <input
+          id="folderSearch"
+          type="search"
+          placeholder="Search folders..."
+        >
+
+        <select id="folderSort">
+          <option value="largest">Largest first</option>
+          <option value="smallest">Smallest first</option>
+          <option value="files">Most files</option>
+          <option value="name">Name A-Z</option>
+        </select>
 
       </div>
 
 
-      <div id="foldersList" class="folder-list">
+      <div id="folderList" class="folder-list">
 
         <div class="empty-state">
-          No scan performed yet.
+          <div class="empty-icon">▤</div>
+          <strong>No folder data yet.</strong>
+          <span>Scan a folder to analyze storage usage.</span>
         </div>
 
       </div>
@@ -625,31 +523,7 @@
   </main>
 
 
-  <div id="fileModal" class="modal">
-
-    <div class="modal-box">
-
-      <button id="closeModal" class="modal-close">
-        ×
-      </button>
-
-      <span class="panel-kicker">
-        FILE DETAILS
-      </span>
-
-      <h2 id="modalFileName">
-        File
-      </h2>
-
-      <div id="modalContent" class="modal-content"></div>
-
-    </div>
-
-  </div>
-
-
   <div id="toast" class="toast"></div>
-
 
   <script src="script.js"></script>
 
