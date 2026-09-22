@@ -65,6 +65,10 @@ let currentPage = "dashboard";
 
 let scanRunning = false;
 
+let confirmedDuplicateGroups = [];
+
+let duplicateAnalysisReady = false;
+
 
 /* =========================================================
    CONSTANTS
@@ -442,6 +446,10 @@ rescanBtn.addEventListener(
 
     scanSource = null;
 
+    confirmedDuplicateGroups = [];
+
+    duplicateAnalysisReady = false;
+
     resetDashboard();
 
     showToast(
@@ -572,7 +580,22 @@ async function startAnalysis(files) {
 
   updateProgress(
     88,
-    "Analyzing file categories..."
+    "Checking duplicate candidates..."
+  );
+
+
+  /*
+    Duplicate analysis is completed before the dashboard
+    is rendered. This keeps the dashboard's duplicate count
+    consistent with the actual Duplicate Files page.
+  */
+
+  await analyzeDuplicates();
+
+
+  updateProgress(
+    97,
+    "Building storage analysis..."
   );
 
 
@@ -712,7 +735,7 @@ function updateStats() {
 
 
   const duplicateGroups =
-    getDuplicateCandidates();
+    confirmedDuplicateGroups;
 
 
   const duplicateExtra =
@@ -1171,45 +1194,11 @@ async function calculateHash(file) {
 }
 
 
-async function renderDuplicates() {
+async function analyzeDuplicates() {
 
-  const container =
-    document.getElementById(
-      "duplicatesList"
-    );
+  confirmedDuplicateGroups = [];
 
-  const summary =
-    document.getElementById(
-      "duplicateSummary"
-    );
-
-
-  if (!allFiles.length) {
-
-    container.innerHTML = `
-
-      <div class="empty-state">
-
-        <div class="empty-icon">◇</div>
-
-        <strong>
-          No duplicates found
-        </strong>
-
-        <span>
-          Select files or a folder to analyze duplicates.
-        </span>
-
-      </div>
-
-    `;
-
-    summary.textContent =
-      "No duplicate analysis yet.";
-
-    return;
-
-  }
+  duplicateAnalysisReady = false;
 
 
   const candidates =
@@ -1218,26 +1207,7 @@ async function renderDuplicates() {
 
   if (!candidates.length) {
 
-    container.innerHTML = `
-
-      <div class="empty-state">
-
-        <div class="empty-icon">✓</div>
-
-        <strong>
-          No duplicate candidates found
-        </strong>
-
-        <span>
-          No files in the selected set currently share the same size.
-        </span>
-
-      </div>
-
-    `;
-
-    summary.textContent =
-      "No duplicate candidates found.";
+    duplicateAnalysisReady = true;
 
     return;
 
@@ -1245,19 +1215,12 @@ async function renderDuplicates() {
 
 
   /*
-    Hash candidate groups.
+    Hash every same-size candidate group.
 
-    Limit concurrency to avoid freezing the browser.
+    Files under 100 MB get a full SHA-256 hash.
+    Larger files use the existing sampled fingerprint
+    to avoid loading huge files into browser memory.
   */
-
-  updateProgress(
-    90,
-    "Checking duplicate candidates..."
-  );
-
-
-  const duplicateGroups = [];
-
 
   for (
     let groupIndex = 0;
@@ -1310,7 +1273,7 @@ async function renderDuplicates() {
 
       if (files.length > 1) {
 
-        duplicateGroups.push({
+        confirmedDuplicateGroups.push({
           hash,
           files
         });
@@ -1324,11 +1287,100 @@ async function renderDuplicates() {
       groupIndex % 3 === 0
     ) {
 
+      const progress =
+        88 +
+        Math.round(
+          ((groupIndex + 1) / candidates.length) * 8
+        );
+
+      updateProgress(
+        Math.min(progress, 96),
+        `Checking duplicate group ${groupIndex + 1} of ${candidates.length}`
+      );
+
       await sleep(0);
 
     }
 
   }
+
+
+  duplicateAnalysisReady = true;
+
+}
+
+
+function renderDuplicates() {
+
+  const container =
+    document.getElementById(
+      "duplicatesList"
+    );
+
+  const summary =
+    document.getElementById(
+      "duplicateSummary"
+    );
+
+
+  if (!allFiles.length) {
+
+    container.innerHTML = `
+
+      <div class="empty-state">
+
+        <div class="empty-icon">◇</div>
+
+        <strong>
+          No duplicates found
+        </strong>
+
+        <span>
+          Select files or a folder to analyze duplicates.
+        </span>
+
+      </div>
+
+    `;
+
+    summary.textContent =
+      "No duplicate analysis yet.";
+
+    return;
+
+  }
+
+
+  if (!duplicateAnalysisReady) {
+
+    container.innerHTML = `
+
+      <div class="empty-state">
+
+        <div class="empty-icon">◌</div>
+
+        <strong>
+          Duplicate analysis is still running
+        </strong>
+
+        <span>
+          Please wait for the current scan to finish.
+        </span>
+
+      </div>
+
+    `;
+
+    summary.textContent =
+      "Duplicate analysis is still running.";
+
+    return;
+
+  }
+
+
+  const duplicateGroups =
+    confirmedDuplicateGroups;
 
 
   if (!duplicateGroups.length) {
@@ -1344,8 +1396,7 @@ async function renderDuplicates() {
         </strong>
 
         <span>
-          Files with matching sizes were checked,
-          but no identical content was confirmed.
+          Same-size candidates were checked, but no identical content was confirmed.
         </span>
 
       </div>
