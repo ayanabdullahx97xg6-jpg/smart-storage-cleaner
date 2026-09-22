@@ -1,139 +1,198 @@
+"use strict";
+
 /* =========================================================
    STORAGE CLEANER
-   Smart local storage analyzer
-   No file contents are uploaded.
+   Browser-only storage analysis
    ========================================================= */
 
 
-const state = {
+/* -----------------------------
+   CONFIGURATION
+----------------------------- */
 
-  files: [],
+const LARGE_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
+const OLD_FILE_DAYS = 180;
 
-  largeFiles: [],
+const SUSPICIOUS_EXTENSIONS = new Set([
+  "scr",
+  "pif",
+  "vbs",
+  "vbe",
+  "js",
+  "jse",
+  "wsf",
+  "wsh",
+  "hta",
+  "cmd",
+  "bat",
+  "com",
+  "msi",
+  "reg",
+  "lnk"
+]);
 
-  oldFiles: [],
+const HIGH_RISK_EXTENSIONS = new Set([
+  "scr",
+  "pif",
+  "vbe",
+  "jse",
+  "wsf",
+  "wsh"
+]);
 
-  duplicateGroups: [],
+const EXECUTABLE_EXTENSIONS = new Set([
+  "exe",
+  "msi",
+  "com",
+  "scr",
+  "pif",
+  "dll"
+]);
 
-  typeStats: [],
+const DOCUMENT_EXTENSIONS = new Set([
+  "pdf",
+  "doc",
+  "docx",
+  "txt",
+  "rtf",
+  "xls",
+  "xlsx",
+  "ppt",
+  "pptx"
+]);
 
-  folderStats: [],
+const IMAGE_EXTENSIONS = new Set([
+  "jpg",
+  "jpeg",
+  "png",
+  "gif",
+  "webp",
+  "bmp",
+  "svg",
+  "ico"
+]);
 
-  scanned: false,
+const VIDEO_EXTENSIONS = new Set([
+  "mp4",
+  "mkv",
+  "avi",
+  "mov",
+  "wmv",
+  "webm"
+]);
 
-  rootName: "",
+const AUDIO_EXTENSIONS = new Set([
+  "mp3",
+  "wav",
+  "flac",
+  "aac",
+  "ogg",
+  "m4a"
+]);
 
-  largeThreshold:
-    500 * 1024 * 1024,
+const ARCHIVE_EXTENSIONS = new Set([
+  "zip",
+  "rar",
+  "7z",
+  "tar",
+  "gz",
+  "iso"
+]);
 
-  oldDays: 180
+const CODE_EXTENSIONS = new Set([
+  "js",
+  "ts",
+  "jsx",
+  "tsx",
+  "html",
+  "css",
+  "json",
+  "py",
+  "java",
+  "c",
+  "cpp",
+  "cs",
+  "php",
+  "go",
+  "rs"
+]);
 
-};
+
+/* -----------------------------
+   STATE
+----------------------------- */
+
+let allFiles = [];
+let currentFolderName = "";
+let scanMode = "";
+
+let duplicateGroups = [];
+let securityResults = [];
 
 
-/* =========================================================
+/* -----------------------------
    ELEMENTS
-   ========================================================= */
+----------------------------- */
 
-const folderInput =
-  document.getElementById("folderInput");
+const folderBtn = document.getElementById("folderBtn");
+const fileBtn = document.getElementById("fileBtn");
 
-const selectFolderButton =
-  document.getElementById("selectFolderButton");
+const folderInput = document.getElementById("folderInput");
+const fileInput = document.getElementById("fileInput");
 
-const rescanButton =
-  document.getElementById("rescanButton");
+const rescanBtn = document.getElementById("rescanBtn");
 
-const scanOverlay =
-  document.getElementById("scanOverlay");
+const scanOverlay = document.getElementById("scanOverlay");
+const scanProgress = document.getElementById("scanProgress");
+const progressBar = document.getElementById("progressBar");
 
-const progressBar =
-  document.getElementById("progressBar");
-
-const progressText =
-  document.getElementById("progressText");
-
-const scanMessage =
-  document.getElementById("scanMessage");
-
-const scanStatus =
-  document.getElementById("scanStatus");
-
-const largeThreshold =
-  document.getElementById("largeThreshold");
-
-const oldThreshold =
-  document.getElementById("oldThreshold");
+const toast = document.getElementById("toast");
 
 
-/* =========================================================
+/* -----------------------------
    NAVIGATION
-   ========================================================= */
+----------------------------- */
 
-document
-  .querySelectorAll(".nav-item")
-  .forEach(button => {
+document.querySelectorAll(".nav-item").forEach(button => {
 
-    button.addEventListener("click", () => {
-
-      const page =
-        button.dataset.page;
-
-      openPage(page);
-
-    });
-
+  button.addEventListener("click", () => {
+    navigate(button.dataset.page);
   });
 
+});
 
-document
-  .querySelectorAll("[data-page-link]")
-  .forEach(button => {
+
+document.querySelectorAll("[data-page]").forEach(button => {
+
+  if (!button.classList.contains("nav-item")) {
 
     button.addEventListener("click", () => {
-
-      openPage(
-        button.dataset.pageLink
-      );
-
+      navigate(button.dataset.page);
     });
 
+  }
+
+});
+
+
+function navigate(page) {
+
+  document.querySelectorAll(".page").forEach(section => {
+    section.classList.remove("active");
   });
 
-
-function openPage(pageName) {
-
-  document
-    .querySelectorAll(".page")
-    .forEach(page => {
-
-      page.classList.remove("active");
-
-    });
-
-
-  const target =
-    document.getElementById(
-      `page-${pageName}`
-    );
-
+  const target = document.getElementById(`page-${page}`);
 
   if (target) {
     target.classList.add("active");
   }
 
-
-  document
-    .querySelectorAll(".nav-item")
-    .forEach(button => {
-
-      button.classList.toggle(
-        "active",
-        button.dataset.page === pageName
-      );
-
-    });
-
+  document.querySelectorAll(".nav-item").forEach(button => {
+    button.classList.toggle(
+      "active",
+      button.dataset.page === page
+    );
+  });
 
   window.scrollTo({
     top: 0,
@@ -143,1664 +202,647 @@ function openPage(pageName) {
 }
 
 
-/* =========================================================
-   SELECT FOLDER
-   ========================================================= */
+/* -----------------------------
+   FILE PICKERS
+----------------------------- */
 
-selectFolderButton.addEventListener(
-  "click",
-  () => folderInput.click()
-);
+folderBtn.addEventListener("click", () => {
+  folderInput.value = "";
+  folderInput.click();
+});
 
 
-folderInput.addEventListener(
-  "change",
-  async event => {
+fileBtn.addEventListener("click", () => {
+  fileInput.value = "";
+  fileInput.click();
+});
 
-    const selectedFiles =
-      Array.from(event.target.files || []);
 
-    if (!selectedFiles.length) {
-      return;
-    }
+folderInput.addEventListener("change", async event => {
 
-    await scanFiles(selectedFiles);
+  const files = Array.from(event.target.files || []);
 
+  if (!files.length) {
+    showToast("No folder selected.");
+    return;
   }
-);
+
+  currentFolderName =
+    files[0].webkitRelativePath
+      ? files[0].webkitRelativePath.split("/")[0]
+      : "Selected Folder";
+
+  scanMode = "folder";
+
+  await startScan(files);
+
+});
 
 
-/* =========================================================
-   SETTINGS
-   ========================================================= */
+fileInput.addEventListener("change", async event => {
 
-largeThreshold.addEventListener(
-  "change",
-  () => {
+  const files = Array.from(event.target.files || []);
 
-    state.largeThreshold =
-      Number(largeThreshold.value);
-
-    if (state.scanned) {
-      recalculate();
-    }
-
+  if (!files.length) {
+    showToast("No files selected.");
+    return;
   }
-);
+
+  currentFolderName = "Selected Files";
+  scanMode = "files";
+
+  await startScan(files);
+
+});
 
 
-oldThreshold.addEventListener(
-  "change",
-  () => {
+rescanBtn.addEventListener("click", () => {
 
-    state.oldDays =
-      Number(oldThreshold.value);
-
-    if (state.scanned) {
-      recalculate();
-    }
-
+  if (allFiles.length) {
+    startScan(
+      allFiles.map(item => item.file)
+    );
   }
-);
+
+});
 
 
-rescanButton.addEventListener(
-  "click",
-  () => {
+/* -----------------------------
+   SCANNING
+----------------------------- */
 
-    if (folderInput.files.length) {
+async function startScan(files) {
 
-      scanFiles(
-        Array.from(folderInput.files)
-      );
+  showOverlay();
 
-    }
+  allFiles = [];
 
-  }
-);
+  duplicateGroups = [];
+  securityResults = [];
 
+  updateProgress(5, "Preparing files...");
 
-/* =========================================================
-   SCAN
-   ========================================================= */
+  await wait(100);
 
-async function scanFiles(files) {
+  const total = files.length;
 
-  state.files = [];
+  for (let i = 0; i < total; i++) {
 
-  state.largeFiles = [];
+    const file = files[i];
 
-  state.oldFiles = [];
-
-  state.duplicateGroups = [];
-
-  state.typeStats = [];
-
-  state.folderStats = [];
-
-
-  showScanOverlay();
-
-  scanStatus.textContent =
-    "SCANNING";
-
-
-  const total =
-    files.length;
-
-
-  for (
-    let i = 0;
-    i < total;
-    i++
-  ) {
-
-    const file =
-      files[i];
-
-
-    const path =
+    const relativePath =
       file.webkitRelativePath ||
       file.name;
 
-
-    const parts =
-      path.split("/");
-
-
-    if (!state.rootName) {
-
-      state.rootName =
-        parts[0] || "Selected Folder";
-
-    }
-
-
-    state.files.push({
-
+    allFiles.push({
       file,
-
       name: file.name,
-
-      path,
-
-      size: Number(file.size) || 0,
-
-      lastModified:
-        Number(file.lastModified) || 0,
-
-      type:
-        file.type || "",
-
-      extension:
-        getExtension(file.name),
-
-      folder:
-        parts.length > 2
-          ? parts
-              .slice(1, -1)
-              .join("/")
-          : parts[0] || "Root"
-
+      path: relativePath,
+      size: file.size,
+      modified: file.lastModified,
+      extension: getExtension(file.name)
     });
 
+    if (i % 100 === 0 || i === total - 1) {
 
-    const percent =
-      Math.round(
-        ((i + 1) / total) * 65
+      const percent =
+        5 + Math.round(((i + 1) / total) * 45);
+
+      updateProgress(
+        percent,
+        `Reading files... ${i + 1.toLocaleString()} / ${total.toLocaleString()}`
       );
 
-
-    updateProgress(
-      percent,
-      `Reading file ${i + 1.toLocaleString()} of ${total.toLocaleString()}...`
-    );
-
-
-    /*
-      IMPORTANT:
-
-      We DO NOT call file.arrayBuffer()
-      here.
-
-      Therefore a 1 GB / 5 GB file
-      does not get loaded into RAM.
-    */
-
-    if (i % 250 === 0) {
-      await sleep(0);
+      await wait(0);
     }
 
   }
 
 
-  updateProgress(
-    70,
-    "Calculating storage insights..."
+  updateProgress(55, "Finding large files...");
+  await wait(50);
+
+  const largeFiles =
+    allFiles.filter(file =>
+      file.size >= LARGE_FILE_SIZE
+    );
+
+
+  updateProgress(62, "Finding old files...");
+  await wait(50);
+
+  const oldFiles =
+    getOldFiles();
+
+
+  updateProgress(70, "Checking duplicates...");
+  await wait(50);
+
+  duplicateGroups =
+    findDuplicatesBySize();
+
+
+  updateProgress(82, "Running security checks...");
+  await wait(50);
+
+  securityResults =
+    runSecurityAnalysis();
+
+
+  updateProgress(91, "Building storage analysis...");
+  await wait(50);
+
+  renderEverything(
+    largeFiles,
+    oldFiles
   );
 
 
-  recalculate(false);
+  updateProgress(100, "Scan complete.");
 
+  await wait(300);
 
-  updateProgress(
-    82,
-    "Checking potential duplicates..."
-  );
+  hideOverlay();
 
+  rescanBtn.classList.remove("hidden");
 
-  await findDuplicates();
-
-
-  updateProgress(
-    96,
-    "Finalizing analysis..."
-  );
-
-
-  renderEverything();
-
-
-  state.scanned = true;
-
-
-  updateProgress(
-    100,
-    "Scan complete"
-  );
-
-
-  await sleep(500);
-
-
-  hideScanOverlay();
-
-
-  scanStatus.textContent =
+  document.getElementById("scanStatus").textContent =
     "SCANNED";
 
+  document.getElementById("heroTitle").textContent =
+    "Your storage has been analyzed.";
 
-  rescanButton.style.display =
-    "inline-flex";
+  document.getElementById("heroText").textContent =
+    `${formatNumber(allFiles.length)} files analyzed. Review the findings below.`;
 
+  updateSmartInsight();
 
   showToast(
-    `${formatNumber(state.files.length)} files analyzed locally.`
+    `Scan complete — ${formatNumber(allFiles.length)} files analyzed.`
   );
 
 }
 
 
-/* =========================================================
-   RECALCULATE
-   ========================================================= */
+/* -----------------------------
+   OLD FILES
+----------------------------- */
 
-function recalculate(render = true) {
+function getOldFiles() {
 
-  state.largeFiles =
-    state.files
-      .filter(
-        item =>
-          item.size >= state.largeThreshold
-      )
-      .sort(
-        (a, b) =>
-          b.size - a.size
-      );
-
-
-  const oldLimit =
+  const cutoff =
     Date.now() -
-    (
-      state.oldDays *
-      24 *
-      60 *
-      60 *
-      1000
-    );
+    OLD_FILE_DAYS *
+    24 *
+    60 *
+    60 *
+    1000;
 
-
-  state.oldFiles =
-    state.files
-      .filter(
-        item =>
-          item.lastModified > 0 &&
-          item.lastModified <= oldLimit
-      )
-      .sort(
-        (a, b) =>
-          a.lastModified -
-          b.lastModified
-      );
-
-
-  calculateTypes();
-
-  calculateFolders();
-
-
-  if (render) {
-    renderEverything();
-  }
+  return allFiles.filter(file =>
+    file.modified < cutoff
+  );
 
 }
 
 
-/* =========================================================
-   FILE TYPES
-   ========================================================= */
+/* -----------------------------
+   LARGE FILES
+----------------------------- */
 
-function calculateTypes() {
+function getLargeFiles() {
 
-  const map = new Map();
+  return allFiles.filter(file =>
+    file.size >= LARGE_FILE_SIZE
+  );
 
-
-  state.files.forEach(item => {
-
-    const category =
-      getFileCategory(item.extension);
+}
 
 
-    if (!map.has(category)) {
+/* -----------------------------
+   DUPLICATES
+----------------------------- */
 
-      map.set(
-        category,
-        {
-          name: category,
-          size: 0,
-          count: 0
-        }
+/*
+   We first group files by size.
+
+   This avoids hashing every file.
+   Files with unique sizes cannot be identical.
+
+   For safety/performance, this version does not
+   upload anything and does not delete anything.
+*/
+
+function findDuplicatesBySize() {
+
+  const groups = new Map();
+
+  for (const item of allFiles) {
+
+    const key = item.size;
+
+    if (!groups.has(key)) {
+      groups.set(key, []);
+    }
+
+    groups.get(key).push(item);
+
+  }
+
+  return Array.from(groups.values())
+    .filter(group => group.length > 1)
+    .map(group => ({
+      size: group[0].size,
+      files: group
+    }));
+
+}
+
+
+/* -----------------------------
+   SECURITY ANALYSIS
+----------------------------- */
+
+function runSecurityAnalysis() {
+
+  const results = [];
+
+  for (const item of allFiles) {
+
+    const name = item.name.toLowerCase();
+    const ext = item.extension;
+
+    let level = "safe";
+    let reasons = [];
+
+    /* Dangerous/suspicious extension */
+
+    if (HIGH_RISK_EXTENSIONS.has(ext)) {
+
+      level = "high";
+
+      reasons.push(
+        `Executable/script-like extension .${ext}`
+      );
+
+    } else if (SUSPICIOUS_EXTENSIONS.has(ext)) {
+
+      level = "review";
+
+      reasons.push(
+        `Script or executable-related extension .${ext}`
       );
 
     }
 
 
-    const record =
-      map.get(category);
-
-
-    record.size += item.size;
-
-    record.count++;
-
-  });
-
-
-  state.typeStats =
-    Array.from(map.values())
-      .sort(
-        (a, b) =>
-          b.size - a.size
-      );
-
-}
-
-
-/* =========================================================
-   FOLDERS
-   ========================================================= */
-
-function calculateFolders() {
-
-  const map = new Map();
-
-
-  state.files.forEach(item => {
-
-    const path =
-      item.folder ||
-      "Root";
-
+    /* Double extension */
 
     const parts =
-      path.split("/");
+      name.split(".").filter(Boolean);
 
+    if (parts.length >= 3) {
 
-    let current = "";
+      const secondLast =
+        parts[parts.length - 2];
 
+      const last =
+        parts[parts.length - 1];
 
-    parts.forEach(part => {
+      const looksLikeDocument =
+        DOCUMENT_EXTENSIONS.has(secondLast);
 
-      if (!part) {
-        return;
-      }
+      const finalExecutable =
+        EXECUTABLE_EXTENSIONS.has(last) ||
+        SUSPICIOUS_EXTENSIONS.has(last);
 
+      if (looksLikeDocument && finalExecutable) {
 
-      current =
-        current
-          ? `${current}/${part}`
-          : part;
+        level = "high";
 
-
-      if (!map.has(current)) {
-
-        map.set(
-          current,
-          {
-            name: current,
-            size: 0,
-            count: 0
-          }
+        reasons.push(
+          "Double-extension pattern deserves review"
         );
 
       }
 
-
-      const record =
-        map.get(current);
+    }
 
 
-      record.size += item.size;
+    /* Executable in a folder selected by user */
 
-      record.count++;
+    if (
+      EXECUTABLE_EXTENSIONS.has(ext) &&
+      (
+        name.includes("download") ||
+        item.path.toLowerCase().includes("downloads")
+      )
+    ) {
 
+      if (level === "safe") {
+        level = "review";
+      }
+
+      reasons.push(
+        "Executable located in a Downloads path"
+      );
+
+    }
+
+
+    /* Suspicious filename patterns */
+
+    const suspiciousWords = [
+      "crack",
+      "keygen",
+      "patcher",
+      "activator",
+      "injector",
+      "stealer",
+      "payload"
+    ];
+
+    for (const word of suspiciousWords) {
+
+      if (name.includes(word)) {
+
+        if (level === "safe") {
+          level = "review";
+        }
+
+        reasons.push(
+          `Filename contains "${word}"`
+        );
+
+        break;
+      }
+
+    }
+
+
+    results.push({
+      ...item,
+      level,
+      reasons
     });
 
-  });
-
-
-  state.folderStats =
-    Array.from(map.values())
-      .sort(
-        (a, b) =>
-          b.size - a.size
-      );
-
-}
-
-
-/* =========================================================
-   SMART DUPLICATES
-   =========================================================
-
-   We first group by file size.
-
-   Then we compare a small fingerprint:
-   - first 128 KB
-   - last 128 KB
-
-   This avoids loading a 1 GB+ file into memory.
-
-   These are called "duplicate candidates"
-   rather than blindly claiming every match
-   is mathematically identical.
-   ========================================================= */
-
-async function findDuplicates() {
-
-  const sizeGroups =
-    new Map();
-
-
-  state.files.forEach(item => {
-
-    if (item.size === 0) {
-      return;
-    }
-
-
-    if (!sizeGroups.has(item.size)) {
-
-      sizeGroups.set(
-        item.size,
-        []
-      );
-
-    }
-
-
-    sizeGroups
-      .get(item.size)
-      .push(item);
-
-  });
-
-
-  const candidates =
-    Array.from(sizeGroups.values())
-      .filter(
-        group =>
-          group.length > 1
-      );
-
-
-  const groups = [];
-
-
-  let processed = 0;
-
-
-  for (const group of candidates) {
-
-    const fingerprints =
-      new Map();
-
-
-    for (const item of group) {
-
-      const fingerprint =
-        await getSmartFingerprint(
-          item.file
-        );
-
-
-      if (!fingerprints.has(
-        fingerprint
-      )) {
-
-        fingerprints.set(
-          fingerprint,
-          []
-        );
-
-      }
-
-
-      fingerprints
-        .get(fingerprint)
-        .push(item);
-
-
-      processed++;
-
-
-      if (
-        processed % 4 === 0
-      ) {
-
-        await sleep(0);
-
-      }
-
-    }
-
-
-    fingerprints.forEach(
-      sameFiles => {
-
-        if (
-          sameFiles.length > 1
-        ) {
-
-          groups.push(
-            sameFiles
-          );
-
-        }
-
-      }
-    );
-
   }
 
-
-  state.duplicateGroups =
-    groups
-      .sort(
-        (a, b) => {
-
-          const aSize =
-            a[0]?.size || 0;
-
-          const bSize =
-            b[0]?.size || 0;
-
-          return (
-            bSize - aSize
-          );
-
-        }
-      );
-
-}
-
-
-/* =========================================================
-   SMART FINGERPRINT
-   ========================================================= */
-
-async function getSmartFingerprint(file) {
-
-  const SAMPLE =
-    128 * 1024;
-
-
-  const firstEnd =
-    Math.min(
-      SAMPLE,
-      file.size
-    );
-
-
-  const first =
-    await readBlob(
-      file.slice(
-        0,
-        firstEnd
-      )
-    );
-
-
-  let last =
-    new Uint8Array();
-
-
-  if (
-    file.size > SAMPLE
-  ) {
-
-    last =
-      await readBlob(
-        file.slice(
-          Math.max(
-            0,
-            file.size - SAMPLE
-          ),
-          file.size
-        )
-      );
-
-  }
-
-
-  const firstHash =
-    await hashBytes(first);
-
-
-  const lastHash =
-    await hashBytes(last);
-
-
-  return [
-    file.size,
-    firstHash,
-    lastHash
-  ].join(":");
-
-}
-
-
-/* =========================================================
-   BROWSER CRYPTO
-   ========================================================= */
-
-async function readBlob(blob) {
-
-  if (!blob.size) {
-    return new Uint8Array();
-  }
-
-
-  return new Uint8Array(
-    await blob.arrayBuffer()
+  return results.filter(
+    item => item.level !== "safe"
   );
 
 }
 
 
-async function hashBytes(bytes) {
-
-  if (!bytes.length) {
-    return "empty";
-  }
-
-
-  const digest =
-    await crypto.subtle.digest(
-      "SHA-256",
-      bytes
-    );
-
-
-  return Array
-    .from(
-      new Uint8Array(digest)
-    )
-    .map(
-      byte =>
-        byte
-          .toString(16)
-          .padStart(2, "0")
-    )
-    .join("");
-
-}
-
-
-/* =========================================================
+/* -----------------------------
    RENDER EVERYTHING
-   ========================================================= */
+----------------------------- */
 
-function renderEverything() {
+function renderEverything(
+  largeFiles,
+  oldFiles
+) {
 
-  renderDashboard();
+  updateStats(
+    largeFiles,
+    oldFiles
+  );
 
-  renderLargeFiles();
-
-  renderOldFiles();
-
+  renderLargeFiles(largeFiles);
+  renderOldFiles(oldFiles);
   renderDuplicates();
-
+  renderSecurity();
   renderTypes();
-
   renderFolders();
-
-}
-
-
-/* =========================================================
-   DASHBOARD
-   ========================================================= */
-
-function renderDashboard() {
-
-  const totalSize =
-    state.files.reduce(
-      (sum, item) =>
-        sum + item.size,
-      0
-    );
-
-
-  document.getElementById(
-    "totalFiles"
-  ).textContent =
-    formatNumber(
-      state.files.length
-    );
-
-
-  document.getElementById(
-    "totalSize"
-  ).textContent =
-    formatBytes(totalSize);
-
-
-  document.getElementById(
-    "largeFiles"
-  ).textContent =
-    formatNumber(
-      state.largeFiles.length
-    );
-
-
-  const duplicateCount =
-    state.duplicateGroups
-      .reduce(
-        (sum, group) =>
-          sum + group.length,
-        0
-      );
-
-
-  document.getElementById(
-    "duplicateFiles"
-  ).textContent =
-    formatNumber(
-      duplicateCount
-    );
-
-
-  document.getElementById(
-    "largeNavCount"
-  ).textContent =
-    formatNumber(
-      state.largeFiles.length
-    );
-
-
-  document.getElementById(
-    "duplicateNavCount"
-  ).textContent =
-    formatNumber(
-      state.duplicateGroups.length
-    );
-
-
-  document.getElementById(
-    "oldNavCount"
-  ).textContent =
-    formatNumber(
-      state.oldFiles.length
-    );
-
-
-  renderInsights();
 
   renderStorageMix();
 
 }
 
 
-/* =========================================================
-   SMART INSIGHTS
-   ========================================================= */
-
-function renderInsights() {
-
-  const container =
-    document.getElementById(
-      "insightsList"
-    );
-
-
-  if (!state.files.length) {
-
-    container.innerHTML =
-      `
-        <div class="empty-state">
-          Select a folder to generate smart insights.
-        </div>
-      `;
-
-    return;
-
-  }
-
-
-  const insights = [];
-
-
-  const hugeFiles =
-    state.files.filter(
-      item =>
-        item.size >=
-        1024 * 1024 * 1024
-    );
-
-
-  if (hugeFiles.length) {
-
-    const hugeSize =
-      hugeFiles.reduce(
-        (sum, item) =>
-          sum + item.size,
-        0
-      );
-
-
-    insights.push({
-
-      icon: "!",
-      title:
-        `${hugeFiles.length} huge file${hugeFiles.length === 1 ? "" : "s"} detected`,
-
-      text:
-        `${formatBytes(hugeSize)} is stored in files larger than 1 GB.`
-
-    });
-
-  }
-
-
-  if (
-    state.duplicateGroups.length
-  ) {
-
-    const duplicateSpace =
-      calculateDuplicateSpace();
-
-
-    insights.push({
-
-      icon: "◈",
-
-      title:
-        `${state.duplicateGroups.length} duplicate group${state.duplicateGroups.length === 1 ? "" : "s"} found`,
-
-      text:
-        `Potentially repeated data accounts for about ${formatBytes(duplicateSpace)}.`
-
-    });
-
-  }
-
-
-  if (state.oldFiles.length) {
-
-    const oldSize =
-      state.oldFiles.reduce(
-        (sum, item) =>
-          sum + item.size,
-        0
-      );
-
-
-    insights.push({
-
-      icon: "◷",
-
-      title:
-        `${formatNumber(state.oldFiles.length)} old files`,
-
-      text:
-        `${formatBytes(oldSize)} hasn't been modified for ${state.oldDays}+ days.`
-
-    });
-
-  }
-
-
-  if (state.folderStats.length) {
-
-    const biggest =
-      state.folderStats[0];
-
-
-    insights.push({
-
-      icon: "▤",
-
-      title:
-        "Biggest storage area",
-
-      text:
-        `${biggest.name} contains ${formatBytes(biggest.size)} across ${formatNumber(biggest.count)} files.`
-
-    });
-
-  }
-
-
-  if (!insights.length) {
-
-    insights.push({
-
-      icon: "✓",
-
-      title:
-        "Storage looks organized",
-
-      text:
-        "No major storage patterns need attention based on your current settings."
-
-    });
-
-  }
-
-
-  container.innerHTML =
-    insights
-      .slice(0, 5)
-      .map(
-        insight =>
-          `
-            <div class="insight">
-
-              <div class="insight-icon">
-                ${insight.icon}
-              </div>
-
-              <div>
-
-                <strong>
-                  ${escapeHTML(
-                    insight.title
-                  )}
-                </strong>
-
-                <p>
-                  ${escapeHTML(
-                    insight.text
-                  )}
-                </p>
-
-              </div>
-
-            </div>
-          `
-      )
-      .join("");
-
-}
-
-
-/* =========================================================
-   STORAGE MIX
-   ========================================================= */
-
-function renderStorageMix() {
-
-  const container =
-    document.getElementById(
-      "storageMix"
-    );
-
-
-  if (!state.typeStats.length) {
-
-    container.innerHTML =
-      `
-        <div class="empty-state">
-          No scan data yet.
-        </div>
-      `;
-
-    return;
-
-  }
-
-
-  const top =
-    state.typeStats.slice(0, 6);
-
-
-  const total =
-    state.typeStats.reduce(
-      (sum, item) =>
-        sum + item.size,
-      0
-    );
-
-
-  container.innerHTML =
-    top.map(item => {
-
-      const percentage =
-        total
-          ? (
-              item.size /
-              total
-            ) * 100
-          : 0;
-
-
-      return `
-        <div class="storage-mix-item">
-
-          <div class="mix-head">
-
-            <span>
-              ${escapeHTML(item.name)}
-            </span>
-
-            <span>
-              ${formatBytes(item.size)}
-              ·
-              ${percentage.toFixed(1)}%
-            </span>
-
-          </div>
-
-          <div class="mix-bar">
-
-            <div
-              class="mix-fill"
-              style="
-                width:${Math.max(
-                  1,
-                  percentage
-                )}%;
-              "
-            ></div>
-
-          </div>
-
-        </div>
-      `;
-
-    }).join("");
-
-}
-
-
-/* =========================================================
-   LARGE FILES
-   ========================================================= */
-
-function renderLargeFiles() {
-
-  const search =
-    document.getElementById(
-      "largeSearch"
-    ).value
-      .trim()
-      .toLowerCase();
-
-
-  const sort =
-    document.getElementById(
-      "largeSort"
-    ).value;
-
-
-  let list =
-    state.largeFiles
-      .filter(
-        item =>
-          item.name
-            .toLowerCase()
-            .includes(search) ||
-
-          item.path
-            .toLowerCase()
-            .includes(search)
-      )
-      .slice();
-
-
-  if (sort === "size-asc") {
-
-    list.sort(
-      (a, b) =>
-        a.size - b.size
-    );
-
-  }
-
-
-  if (sort === "size-desc") {
-
-    list.sort(
-      (a, b) =>
-        b.size - a.size
-    );
-
-  }
-
-
-  if (sort === "name") {
-
-    list.sort(
-      (a, b) =>
-        a.name.localeCompare(
-          b.name
-        )
-    );
-
-  }
-
-
-  if (sort === "date") {
-
-    list.sort(
-      (a, b) =>
-        b.lastModified -
-        a.lastModified
-    );
-
-  }
-
+/* -----------------------------
+   STATS
+----------------------------- */
+
+function updateStats(
+  largeFiles,
+  oldFiles
+) {
 
   const totalSize =
-    state.largeFiles.reduce(
+    allFiles.reduce(
       (sum, item) =>
         sum + item.size,
       0
     );
 
-
-  const huge =
-    state.largeFiles.filter(
-      item =>
-        item.size >=
-        1024 * 1024 * 1024
-    );
-
-
   document.getElementById(
-    "largeCountPage"
+    "totalFiles"
   ).textContent =
-    formatNumber(
-      state.largeFiles.length
-    );
-
+    formatNumber(allFiles.length);
 
   document.getElementById(
-    "largeSizePage"
+    "totalSize"
   ).textContent =
     formatBytes(totalSize);
 
+  document.getElementById(
+    "largeCount"
+  ).textContent =
+    formatNumber(largeFiles.length);
 
   document.getElementById(
-    "hugeCountPage"
+    "duplicateCount"
   ).textContent =
     formatNumber(
-      huge.length
+      duplicateGroups.length
     );
-
 
   document.getElementById(
-    "largeSubtitle"
+    "attentionLarge"
   ).textContent =
-    `Files larger than ${formatBytes(state.largeThreshold)}.`;
+    `${formatNumber(largeFiles.length)} ›`;
 
+  document.getElementById(
+    "attentionDuplicates"
+  ).textContent =
+    `${formatNumber(duplicateGroups.length)} ›`;
+
+  document.getElementById(
+    "attentionOld"
+  ).textContent =
+    `${formatNumber(oldFiles.length)} ›`;
+
+  document.getElementById(
+    "attentionSecurity"
+  ).textContent =
+    `${formatNumber(securityResults.length)} ›`;
+
+}
+
+
+/* -----------------------------
+   LARGE FILES RENDER
+----------------------------- */
+
+function renderLargeFiles(
+  files = getLargeFiles()
+) {
 
   const container =
-    document.getElementById(
-      "largeList"
+    document.getElementById("largeList");
+
+  const search =
+    document.getElementById("largeSearch")
+      .value
+      .toLowerCase();
+
+  const sort =
+    document.getElementById("largeSort")
+      .value;
+
+  let filtered =
+    files.filter(item =>
+      item.name.toLowerCase()
+        .includes(search) ||
+      item.path.toLowerCase()
+        .includes(search)
     );
 
-
-  if (!list.length) {
-
-    container.innerHTML =
-      `
-        <div class="empty-state">
-          No large files found.
-          <br>
-          Try lowering the threshold above.
-        </div>
-      `;
-
-    return;
-
+  if (sort === "size-desc") {
+    filtered.sort((a, b) =>
+      b.size - a.size
+    );
   }
 
+  if (sort === "size-asc") {
+    filtered.sort((a, b) =>
+      a.size - b.size
+    );
+  }
+
+  if (sort === "name") {
+    filtered.sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
+  }
+
+  if (!filtered.length) {
+
+    container.innerHTML = `
+      <div class="empty-state">
+        No large files found.
+        <br>
+        Files larger than 100 MB will appear here.
+      </div>
+    `;
+
+    return;
+  }
 
   container.innerHTML =
-    list
-      .map(
-        item =>
-          fileRow(
-            item,
-            item.size >=
-              1024 * 1024 * 1024
-          )
-      )
+    filtered
+      .map(fileRow)
       .join("");
 
 }
 
 
-/* =========================================================
+/* -----------------------------
    OLD FILES
-   ========================================================= */
+----------------------------- */
 
-function renderOldFiles() {
+function renderOldFiles(
+  files = getOldFiles()
+) {
+
+  const container =
+    document.getElementById("oldList");
 
   const search =
-    document.getElementById(
-      "oldSearch"
-    ).value
-      .trim()
+    document.getElementById("oldSearch")
+      .value
       .toLowerCase();
 
-
   const sort =
-    document.getElementById(
-      "oldSort"
-    ).value;
+    document.getElementById("oldSort")
+      .value;
 
-
-  let list =
-    state.oldFiles
-      .filter(
-        item =>
-          item.name
-            .toLowerCase()
-            .includes(search) ||
-
-          item.path
-            .toLowerCase()
-            .includes(search)
-      )
-      .slice();
-
+  let filtered =
+    files.filter(item =>
+      item.name.toLowerCase()
+        .includes(search) ||
+      item.path.toLowerCase()
+        .includes(search)
+    );
 
   if (sort === "oldest") {
 
-    list.sort(
+    filtered.sort(
       (a, b) =>
-        a.lastModified -
-        b.lastModified
+        a.modified - b.modified
     );
 
   }
 
+  if (sort === "newest") {
 
-  if (sort === "largest") {
+    filtered.sort(
+      (a, b) =>
+        b.modified - a.modified
+    );
 
-    list.sort(
+  }
+
+  if (sort === "size") {
+
+    filtered.sort(
       (a, b) =>
         b.size - a.size
     );
 
   }
 
+  if (!filtered.length) {
 
-  if (sort === "name") {
-
-    list.sort(
-      (a, b) =>
-        a.name.localeCompare(
-          b.name
-        )
-    );
-
-  }
-
-
-  const container =
-    document.getElementById(
-      "oldList"
-    );
-
-
-  if (!list.length) {
-
-    container.innerHTML =
-      `
-        <div class="empty-state">
-          No old files found.
-        </div>
-      `;
+    container.innerHTML = `
+      <div class="empty-state">
+        No old files found.
+      </div>
+    `;
 
     return;
-
   }
 
-
   container.innerHTML =
-    list
-      .slice(0, 2000)
-      .map(
-        item =>
-          fileRow(item, false)
-      )
+    filtered
+      .map(fileRow)
       .join("");
 
 }
 
 
-/* =========================================================
-   DUPLICATES
-   ========================================================= */
-
-function renderDuplicates() {
-
-  const container =
-    document.getElementById(
-      "duplicateList"
-    );
-
-
-  const duplicateSpace =
-    calculateDuplicateSpace();
-
-
-  document.getElementById(
-    "duplicateGroupsPage"
-  ).textContent =
-    formatNumber(
-      state.duplicateGroups.length
-    );
-
-
-  document.getElementById(
-    "duplicateSpacePage"
-  ).textContent =
-    formatBytes(
-      duplicateSpace
-    );
-
-
-  if (!state.duplicateGroups.length) {
-
-    container.innerHTML =
-      `
-        <div class="empty-state">
-          No duplicate candidates found.
-        </div>
-      `;
-
-    return;
-
-  }
-
-
-  container.innerHTML =
-    state.duplicateGroups
-      .slice(0, 500)
-      .map(
-        (group, index) => {
-
-          const size =
-            group[0]?.size || 0;
-
-
-          return `
-            <div class="duplicate-group">
-
-              <div class="duplicate-header">
-
-                <strong>
-                  Duplicate Group ${index + 1}
-                </strong>
-
-                <span>
-                  ${group.length}
-                  files
-                  ·
-                  ${formatBytes(
-                    size * group.length
-                  )}
-                </span>
-
-              </div>
-
-              <div class="duplicate-files">
-
-                ${group
-                  .map(
-                    item =>
-                      fileRow(
-                        item,
-                        false
-                      )
-                  )
-                  .join("")}
-
-              </div>
-
-            </div>
-          `;
-
-        }
-      )
-      .join("");
-
-}
-
-
-/* =========================================================
-   TYPES
-   ========================================================= */
-
-function renderTypes() {
-
-  const container =
-    document.getElementById(
-      "typeList"
-    );
-
-
-  if (!state.typeStats.length) {
-
-    container.innerHTML =
-      `
-        <div class="empty-state">
-          No scan data yet.
-        </div>
-      `;
-
-    return;
-
-  }
-
-
-  const total =
-    state.typeStats.reduce(
-      (sum, item) =>
-        sum + item.size,
-      0
-    );
-
-
-  container.innerHTML =
-    state.typeStats
-      .map(item => {
-
-        const percentage =
-          total
-            ? (
-                item.size /
-                total
-              ) * 100
-            : 0;
-
-
-        return `
-          <div class="type-row">
-
-            <div class="type-top">
-
-              <span>
-                <strong>
-                  ${escapeHTML(
-                    item.name
-                  )}
-                </strong>
-
-                ·
-
-                ${formatNumber(
-                  item.count
-                )}
-                files
-              </span>
-
-              <span>
-                ${formatBytes(
-                  item.size
-                )}
-
-                ·
-
-                ${percentage.toFixed(1)}%
-              </span>
-
-            </div>
-
-            <div class="type-bar">
-
-              <div
-                class="type-fill"
-                style="
-                  width:${Math.max(
-                    1,
-                    percentage
-                  )}%;
-                "
-              ></div>
-
-            </div>
-
-          </div>
-        `;
-
-      })
-      .join("");
-
-}
-
-
-/* =========================================================
-   FOLDERS
-   ========================================================= */
-
-function renderFolders() {
-
-  const container =
-    document.getElementById(
-      "folderList"
-    );
-
-
-  if (!state.folderStats.length) {
-
-    container.innerHTML =
-      `
-        <div class="empty-state">
-          No scan data yet.
-        </div>
-      `;
-
-    return;
-
-  }
-
-
-  const maxSize =
-    state.folderStats[0].size;
-
-
-  container.innerHTML =
-    state.folderStats
-      .slice(0, 1500)
-      .map(item => {
-
-        const percentage =
-          maxSize
-            ? (
-                item.size /
-                maxSize
-              ) * 100
-            : 0;
-
-
-        return `
-          <div class="folder-row">
-
-            <div class="folder-top">
-
-              <span>
-                📁
-                ${escapeHTML(
-                  item.name
-                )}
-              </span>
-
-              <span>
-                ${formatBytes(
-                  item.size
-                )}
-              </span>
-
-            </div>
-
-            <div class="folder-count">
-
-              ${formatNumber(
-                item.count
-              )}
-              files
-
-            </div>
-
-            <div class="folder-bar">
-
-              <div
-                class="folder-fill"
-                style="
-                  width:${Math.max(
-                    1,
-                    percentage
-                  )}%;
-                "
-              ></div>
-
-            </div>
-
-          </div>
-        `;
-
-      })
-      .join("");
-
-}
-
-
-/* =========================================================
+/* -----------------------------
    FILE ROW
-   ========================================================= */
+----------------------------- */
 
-function fileRow(
-  item,
-  huge = false
-) {
+function fileRow(item) {
 
   return `
     <div class="file-row">
 
       <div class="file-icon">
-        ${getFileIcon(
-          item.extension
-        )}
+        ${getFileIcon(item.extension)}
       </div>
 
-      <div class="file-main">
+      <div>
 
         <div class="file-name">
-
-          ${escapeHTML(
-            item.name
-          )}
-
-          ${
-            huge
-              ? `<span class="huge-badge">
-                   HUGE
-                 </span>`
-              : ""
-          }
-
+          ${escapeHTML(item.name)}
         </div>
 
         <div class="file-path">
-          ${escapeHTML(
-            item.path
-          )}
+          ${escapeHTML(item.path)}
         </div>
 
       </div>
@@ -1808,15 +850,11 @@ function fileRow(
       <div class="file-meta">
 
         <div class="file-size">
-          ${formatBytes(
-            item.size
-          )}
+          ${formatBytes(item.size)}
         </div>
 
         <div class="file-date">
-          ${formatDate(
-            item.lastModified
-          )}
+          ${formatDate(item.modified)}
         </div>
 
       </div>
@@ -1827,293 +865,800 @@ function fileRow(
 }
 
 
-/* =========================================================
-   DUPLICATE SPACE
-   ========================================================= */
+/* -----------------------------
+   DUPLICATES RENDER
+----------------------------- */
 
-function calculateDuplicateSpace() {
+function renderDuplicates() {
 
-  return state.duplicateGroups
-    .reduce(
-      (total, group) => {
-
-        if (group.length <= 1) {
-          return total;
-        }
-
-
-        /*
-          Keep one copy.
-
-          Therefore potential extra space
-          = total group size - one copy.
-        */
-
-        const size =
-          group[0]?.size || 0;
-
-
-        return (
-          total +
-          (
-            size *
-            (group.length - 1)
-          )
-        );
-
-      },
-      0
+  const container =
+    document.getElementById(
+      "duplicateList"
     );
+
+  document.getElementById(
+    "duplicateGroups"
+  ).textContent =
+    formatNumber(
+      duplicateGroups.length
+    );
+
+
+  let extraSpace = 0;
+
+  duplicateGroups.forEach(group => {
+
+    extraSpace +=
+      group.size *
+      (group.files.length - 1);
+
+  });
+
+
+  document.getElementById(
+    "duplicateSpace"
+  ).textContent =
+    formatBytes(extraSpace);
+
+
+  if (!duplicateGroups.length) {
+
+    container.innerHTML = `
+      <div class="empty-state">
+        No duplicate groups found.
+      </div>
+    `;
+
+    return;
+  }
+
+
+  container.innerHTML =
+    duplicateGroups
+      .slice(0, 300)
+      .map((group, index) => {
+
+        return `
+          <div class="duplicate-group">
+
+            <div class="duplicate-header">
+
+              <strong>
+                Duplicate Group ${index + 1}
+              </strong>
+
+              <span>
+                ${group.files.length} identical-size files ·
+                ${formatBytes(group.size)}
+              </span>
+
+            </div>
+
+            <div class="duplicate-files">
+
+              ${group.files
+                .map(file => `
+                  <div class="duplicate-file">
+
+                    <div>
+                      <strong>
+                        ${escapeHTML(file.name)}
+                      </strong>
+
+                      <small>
+                        ${escapeHTML(file.path)}
+                      </small>
+                    </div>
+
+                    <span>
+                      ${formatBytes(file.size)}
+                    </span>
+
+                  </div>
+                `)
+                .join("")}
+
+            </div>
+
+          </div>
+        `;
+
+      })
+      .join("");
 
 }
 
 
-/* =========================================================
-   FILE CATEGORIES
-   ========================================================= */
+/* -----------------------------
+   SECURITY RENDER
+----------------------------- */
 
-function getFileCategory(
-  extension
-) {
+function renderSecurity() {
 
-  const ext =
-    extension.toLowerCase();
+  const container =
+    document.getElementById(
+      "securityList"
+    );
 
-
-  const categories = {
-
-    Images: [
-      "jpg",
-      "jpeg",
-      "png",
-      "gif",
-      "webp",
-      "bmp",
-      "svg",
-      "ico",
-      "tiff"
-    ],
-
-    Videos: [
-      "mp4",
-      "mkv",
-      "avi",
-      "mov",
-      "webm",
-      "wmv",
-      "flv"
-    ],
-
-    Audio: [
-      "mp3",
-      "wav",
-      "flac",
-      "aac",
-      "ogg",
-      "m4a"
-    ],
-
-    Documents: [
-      "pdf",
-      "doc",
-      "docx",
-      "xls",
-      "xlsx",
-      "ppt",
-      "pptx",
-      "txt",
-      "rtf"
-    ],
-
-    Archives: [
-      "zip",
-      "rar",
-      "7z",
-      "tar",
-      "gz",
-      "iso"
-    ],
-
-    Code: [
-      "js",
-      "ts",
-      "jsx",
-      "tsx",
-      "html",
-      "css",
-      "json",
-      "py",
-      "java",
-      "c",
-      "cpp",
-      "cs",
-      "php",
-      "go",
-      "rs"
-    ],
-
-    Executables: [
-      "exe",
-      "msi",
-      "dll",
-      "app",
-      "bin"
-    ]
-
-  };
+  document.getElementById(
+    "securityChecked"
+  ).textContent =
+    formatNumber(allFiles.length);
 
 
-  for (
-    const [category, extensions]
-    of Object.entries(categories)
-  ) {
+  const warnings =
+    securityResults.filter(
+      item =>
+        item.level === "review"
+    ).length;
 
-    if (
-      extensions.includes(ext)
+
+  const high =
+    securityResults.filter(
+      item =>
+        item.level === "high"
+    ).length;
+
+
+  document.getElementById(
+    "securityWarnings"
+  ).textContent =
+    formatNumber(warnings);
+
+
+  document.getElementById(
+    "securityHigh"
+  ).textContent =
+    formatNumber(high);
+
+
+  if (!securityResults.length) {
+
+    container.innerHTML = `
+      <div class="empty-state">
+
+        <div>
+
+          <strong style="color:#35d39a;">
+            ✓ No obvious security red flags found
+          </strong>
+
+          <br><br>
+
+          Your selected files did not match
+          the suspicious patterns checked by this tool.
+
+          <br><br>
+
+          <small>
+            This does not guarantee that a file is malware-free.
+            Use Windows Security or another trusted antivirus
+            for a full malware scan.
+          </small>
+
+        </div>
+
+      </div>
+    `;
+
+    return;
+  }
+
+
+  container.innerHTML =
+    securityResults
+      .sort((a, b) => {
+
+        const weight = {
+          high: 3,
+          review: 2,
+          safe: 1
+        };
+
+        return weight[b.level] -
+               weight[a.level];
+
+      })
+      .map(item => {
+
+        const isHigh =
+          item.level === "high";
+
+        return `
+          <div class="
+            security-result
+            ${isHigh ? "high" : "warning"}
+          ">
+
+            <div class="file-icon">
+              🛡
+            </div>
+
+            <div>
+
+              <strong>
+                ${escapeHTML(item.name)}
+              </strong>
+
+              <div class="file-path">
+                ${escapeHTML(item.path)}
+              </div>
+
+              <div
+                class="file-path"
+                style="margin-top:7px;color:#d0ccda;"
+              >
+                ${escapeHTML(
+                  item.reasons.join(" · ")
+                )}
+              </div>
+
+            </div>
+
+            <span class="
+              security-badge
+              ${isHigh
+                ? "badge-high"
+                : "badge-review"}
+            ">
+              ${isHigh
+                ? "HIGH REVIEW"
+                : "REVIEW"}
+            </span>
+
+          </div>
+        `;
+
+      })
+      .join("");
+
+}
+
+
+/* -----------------------------
+   FILE TYPES
+----------------------------- */
+
+function renderTypes() {
+
+  const container =
+    document.getElementById(
+      "typesList"
+    );
+
+  if (!allFiles.length) {
+
+    container.innerHTML = `
+      <div class="empty-state">
+        Scan files to see file types.
+      </div>
+    `;
+
+    return;
+  }
+
+
+  const map = new Map();
+
+
+  for (const file of allFiles) {
+
+    const category =
+      getCategory(file.extension);
+
+    if (!map.has(category)) {
+
+      map.set(category, {
+        size: 0,
+        count: 0
+      });
+
+    }
+
+    map.get(category).size += file.size;
+    map.get(category).count++;
+
+  }
+
+
+  const total =
+    allFiles.reduce(
+      (sum, file) =>
+        sum + file.size,
+      0
+    );
+
+
+  const rows =
+    Array.from(map.entries())
+      .sort(
+        (a, b) =>
+          b[1].size -
+          a[1].size
+      );
+
+
+  container.innerHTML =
+    rows
+      .map(([name, data]) => {
+
+        const percent =
+          total > 0
+            ? (data.size / total) * 100
+            : 0;
+
+        return `
+          <div class="type-card">
+
+            <div class="type-head">
+
+              <strong>
+                ${escapeHTML(name)}
+              </strong>
+
+              <span>
+                ${formatBytes(data.size)}
+                · ${formatNumber(data.count)} files
+              </span>
+
+            </div>
+
+            <div class="type-progress">
+
+              <div
+                style="width:${Math.max(
+                  percent,
+                  1
+                )}%"
+              ></div>
+
+            </div>
+
+          </div>
+        `;
+
+      })
+      .join("");
+
+}
+
+
+/* -----------------------------
+   FOLDERS
+----------------------------- */
+
+function renderFolders() {
+
+  const container =
+    document.getElementById(
+      "foldersList"
+    );
+
+  if (!allFiles.length) {
+
+    container.innerHTML = `
+      <div class="empty-state">
+        Scan a folder to analyze storage by folder.
+      </div>
+    `;
+
+    return;
+  }
+
+
+  const folders = new Map();
+
+
+  for (const item of allFiles) {
+
+    const parts =
+      item.path.split("/");
+
+    let current = "";
+
+    for (
+      let i = 0;
+      i < parts.length - 1;
+      i++
     ) {
 
-      return category;
+      current =
+        current
+          ? `${current}/${parts[i]}`
+          : parts[i];
+
+      if (!folders.has(current)) {
+
+        folders.set(current, {
+          size: 0,
+          files: 0
+        });
+
+      }
+
+      folders.get(current).size +=
+        item.size;
+
+      folders.get(current).files++;
 
     }
 
   }
 
 
+  const rows =
+    Array.from(folders.entries())
+      .sort(
+        (a, b) =>
+          b[1].size -
+          a[1].size
+      )
+      .slice(0, 100);
+
+
+  const maxSize =
+    rows.length
+      ? rows[0][1].size
+      : 1;
+
+
+  container.innerHTML =
+    rows
+      .map(([folder, data]) => {
+
+        const percent =
+          (data.size / maxSize) * 100;
+
+        return `
+          <div class="folder-card">
+
+            <div class="folder-top">
+
+              <div class="folder-name">
+                📁 ${escapeHTML(folder)}
+              </div>
+
+              <div class="folder-size">
+                ${formatBytes(data.size)}
+              </div>
+
+            </div>
+
+            <div class="folder-count">
+              ${formatNumber(data.files)} files
+            </div>
+
+            <div class="folder-track">
+
+              <div
+                class="folder-bar"
+                style="width:${Math.max(
+                  percent,
+                  1
+                )}%"
+              ></div>
+
+            </div>
+
+          </div>
+        `;
+
+      })
+      .join("");
+
+}
+
+
+/* -----------------------------
+   STORAGE MIX
+----------------------------- */
+
+function renderStorageMix() {
+
+  const container =
+    document.getElementById(
+      "storageMix"
+    );
+
+  if (!allFiles.length) {
+
+    container.innerHTML = `
+      <div class="empty-small">
+        Scan files to see storage distribution.
+      </div>
+    `;
+
+    return;
+  }
+
+
+  const map = new Map();
+
+
+  for (const item of allFiles) {
+
+    const category =
+      getCategory(item.extension);
+
+    map.set(
+      category,
+      (map.get(category) || 0) +
+      item.size
+    );
+
+  }
+
+
+  const total =
+    allFiles.reduce(
+      (sum, item) =>
+        sum + item.size,
+      0
+    );
+
+
+  const rows =
+    Array.from(map.entries())
+      .sort(
+        (a, b) =>
+          b[1] - a[1]
+      )
+      .slice(0, 7);
+
+
+  container.innerHTML =
+    rows
+      .map(([name, size]) => {
+
+        const percent =
+          total
+            ? (size / total) * 100
+            : 0;
+
+        return `
+          <div class="mix-row">
+
+            <div class="mix-head">
+
+              <span>
+                ${escapeHTML(name)}
+              </span>
+
+              <span>
+                ${formatBytes(size)}
+                · ${percent.toFixed(1)}%
+              </span>
+
+            </div>
+
+            <div class="mix-track">
+
+              <div
+                class="mix-bar"
+                style="width:${Math.max(
+                  percent,
+                  1
+                )}%"
+              ></div>
+
+            </div>
+
+          </div>
+        `;
+
+      })
+      .join("");
+
+}
+
+
+/* -----------------------------
+   SMART INSIGHT
+----------------------------- */
+
+function updateSmartInsight() {
+
+  if (!allFiles.length) {
+    return;
+  }
+
+
+  const total =
+    allFiles.reduce(
+      (sum, item) =>
+        sum + item.size,
+      0
+    );
+
+
+  const large =
+    getLargeFiles();
+
+
+  const old =
+    getOldFiles();
+
+
+  if (large.length) {
+
+    const largeSpace =
+      large.reduce(
+        (sum, item) =>
+          sum + item.size,
+        0
+      );
+
+    document.getElementById(
+      "smartTitle"
+    ).textContent =
+      `${large.length} large files deserve a look.`;
+
+    document.getElementById(
+      "smartText"
+    ).textContent =
+      `Together they use ${formatBytes(
+        largeSpace
+      )}. Review these before considering cleanup.`;
+
+    return;
+  }
+
+
+  if (securityResults.length) {
+
+    document.getElementById(
+      "smartTitle"
+    ).textContent =
+      `${securityResults.length} files need a security review.`;
+
+    document.getElementById(
+      "smartText"
+    ).textContent =
+      "Storage Cleaner found file patterns that deserve a closer look. This is a signal, not an antivirus verdict.";
+
+    return;
+  }
+
+
+  if (old.length) {
+
+    document.getElementById(
+      "smartTitle"
+    ).textContent =
+      `${old.length} files have been untouched for 180+ days.`;
+
+    document.getElementById(
+      "smartText"
+    ).textContent =
+      "These files may be worth reviewing if you no longer need them.";
+
+    return;
+  }
+
+
+  document.getElementById(
+    "smartTitle"
+  ).textContent =
+    "Nothing obvious needs attention.";
+
+  document.getElementById(
+    "smartText"
+  ).textContent =
+    `${formatNumber(allFiles.length)} files use ${formatBytes(total)}.`;
+
+}
+
+
+/* -----------------------------
+   SEARCH / SORT EVENTS
+----------------------------- */
+
+document.getElementById(
+  "largeSearch"
+).addEventListener(
+  "input",
+  () => renderLargeFiles()
+);
+
+document.getElementById(
+  "largeSort"
+).addEventListener(
+  "change",
+  () => renderLargeFiles()
+);
+
+document.getElementById(
+  "oldSearch"
+).addEventListener(
+  "input",
+  () => renderOldFiles()
+);
+
+document.getElementById(
+  "oldSort"
+).addEventListener(
+  "change",
+  () => renderOldFiles()
+);
+
+
+/* -----------------------------
+   HELPERS
+----------------------------- */
+
+function getExtension(name) {
+
+  const parts =
+    name.toLowerCase()
+      .split(".");
+
+  if (parts.length < 2) {
+    return "";
+  }
+
+  return parts.pop();
+
+}
+
+
+function getCategory(ext) {
+
+  if (IMAGE_EXTENSIONS.has(ext))
+    return "Images";
+
+  if (VIDEO_EXTENSIONS.has(ext))
+    return "Videos";
+
+  if (AUDIO_EXTENSIONS.has(ext))
+    return "Audio";
+
+  if (ARCHIVE_EXTENSIONS.has(ext))
+    return "Archives";
+
+  if (DOCUMENT_EXTENSIONS.has(ext))
+    return "Documents";
+
+  if (CODE_EXTENSIONS.has(ext))
+    return "Code";
+
+  if (EXECUTABLE_EXTENSIONS.has(ext))
+    return "Executables";
+
   return "Other";
 
 }
 
 
-/* =========================================================
-   ICONS
-   ========================================================= */
+function getFileIcon(ext) {
 
-function getFileIcon(extension) {
-
-  const ext =
-    extension.toLowerCase();
-
-
-  if (
-    [
-      "jpg",
-      "jpeg",
-      "png",
-      "gif",
-      "webp",
-      "bmp",
-      "svg"
-    ].includes(ext)
-  ) {
-
+  if (IMAGE_EXTENSIONS.has(ext))
     return "▧";
 
-  }
-
-
-  if (
-    [
-      "mp4",
-      "mkv",
-      "avi",
-      "mov",
-      "webm"
-    ].includes(ext)
-  ) {
-
+  if (VIDEO_EXTENSIONS.has(ext))
     return "▶";
 
-  }
-
-
-  if (
-    [
-      "mp3",
-      "wav",
-      "flac",
-      "aac"
-    ].includes(ext)
-  ) {
-
+  if (AUDIO_EXTENSIONS.has(ext))
     return "♫";
 
-  }
-
-
-  if (
-    [
-      "zip",
-      "rar",
-      "7z",
-      "iso"
-    ].includes(ext)
-  ) {
-
+  if (ARCHIVE_EXTENSIONS.has(ext))
     return "▱";
 
-  }
+  if (DOCUMENT_EXTENSIONS.has(ext))
+    return "▤";
 
-
-  if (
-    [
-      "exe",
-      "msi",
-      "dll"
-    ].includes(ext)
-  ) {
-
+  if (EXECUTABLE_EXTENSIONS.has(ext))
     return "⚙";
-
-  }
-
 
   return "□";
 
 }
 
 
-/* =========================================================
-   EXTENSION
-   ========================================================= */
-
-function getExtension(name) {
-
-  const index =
-    name.lastIndexOf(".");
-
-
-  if (
-    index <= 0 ||
-    index === name.length - 1
-  ) {
-
-    return "";
-
-  }
-
-
-  return name
-    .slice(index + 1)
-    .toLowerCase();
-
-}
-
-
-/* =========================================================
-   FORMATTING
-   ========================================================= */
-
 function formatBytes(bytes) {
 
-  if (
-    !Number.isFinite(bytes) ||
-    bytes <= 0
-  ) {
-
+  if (!Number.isFinite(bytes) || bytes <= 0) {
     return "0 B";
-
   }
-
 
   const units = [
     "B",
@@ -2123,20 +1668,17 @@ function formatBytes(bytes) {
     "TB"
   ];
 
-
   const index =
     Math.floor(
       Math.log(bytes) /
       Math.log(1024)
     );
 
-
   const safeIndex =
     Math.min(
       index,
       units.length - 1
     );
-
 
   const value =
     bytes /
@@ -2145,29 +1687,19 @@ function formatBytes(bytes) {
       safeIndex
     );
 
-
-  const decimals =
-    safeIndex === 0
-      ? 0
-      : value >= 100
-        ? 1
-        : 2;
-
-
-  return (
-    value.toFixed(decimals) +
-    " " +
-    units[safeIndex]
-  );
+  return `${value.toFixed(
+    value >= 100 ? 0 :
+    value >= 10 ? 1 :
+    2
+  )} ${units[safeIndex]}`;
 
 }
 
 
 function formatNumber(number) {
 
-  return Number(
-    number || 0
-  ).toLocaleString();
+  return Number(number || 0)
+    .toLocaleString();
 
 }
 
@@ -2178,43 +1710,50 @@ function formatDate(timestamp) {
     return "Unknown date";
   }
 
+  return new Date(timestamp)
+    .toLocaleDateString(
+      undefined,
+      {
+        year: "numeric",
+        month: "short",
+        day: "numeric"
+      }
+    );
 
-  return new Date(
-    timestamp
-  ).toLocaleDateString(
-    undefined,
-    {
-      year: "numeric",
-      month: "short",
-      day: "numeric"
-    }
+}
+
+
+function escapeHTML(value) {
+
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+
+}
+
+
+function showOverlay() {
+
+  scanOverlay.classList.remove(
+    "hidden"
+  );
+
+  updateProgress(
+    0,
+    "Preparing scan..."
   );
 
 }
 
 
-/* =========================================================
-   PROGRESS
-   ========================================================= */
+function hideOverlay() {
 
-function showScanOverlay() {
-
-  scanOverlay.style.display =
-    "flex";
-
-  progressBar.style.width =
-    "0%";
-
-  progressText.textContent =
-    "0%";
-
-}
-
-
-function hideScanOverlay() {
-
-  scanOverlay.style.display =
-    "none";
+  scanOverlay.classList.add(
+    "hidden"
+  );
 
 }
 
@@ -2227,141 +1766,61 @@ function updateProgress(
   progressBar.style.width =
     `${percent}%`;
 
-  progressText.textContent =
-    `${percent}%`;
-
-  scanMessage.textContent =
+  scanProgress.textContent =
     message;
 
 }
-
-
-/* =========================================================
-   TOAST
-   ========================================================= */
-
-let toastTimer;
 
 
 function showToast(message) {
 
-  const toast =
-    document.getElementById(
-      "toast"
-    );
-
-
   toast.textContent =
     message;
 
-
-  toast.classList.add(
-    "show"
-  );
-
+  toast.classList.add("show");
 
   clearTimeout(
-    toastTimer
+    showToast.timer
   );
 
+  showToast.timer =
+    setTimeout(() => {
 
-  toastTimer =
-    setTimeout(
-      () => {
+      toast.classList.remove(
+        "show"
+      );
 
-        toast.classList.remove(
-          "show"
-        );
-
-      },
-      3500
-    );
+    }, 3000);
 
 }
 
 
-/* =========================================================
-   HELPERS
-   ========================================================= */
-
-function escapeHTML(value) {
-
-  return String(value)
-    .replace(
-      /&/g,
-      "&amp;"
-    )
-    .replace(
-      /</g,
-      "&lt;"
-    )
-    .replace(
-      />/g,
-      "&gt;"
-    )
-    .replace(
-      /"/g,
-      "&quot;"
-    )
-    .replace(
-      /'/g,
-      "&#039;"
-    );
-
-}
-
-
-function sleep(ms) {
+function wait(ms) {
 
   return new Promise(
     resolve =>
-      setTimeout(
-        resolve,
-        ms
-      )
+      setTimeout(resolve, ms)
   );
 
 }
 
 
-/* =========================================================
-   SEARCH / SORT EVENTS
-   ========================================================= */
-
-document
-  .getElementById("largeSearch")
-  .addEventListener(
-    "input",
-    renderLargeFiles
-  );
-
-
-document
-  .getElementById("largeSort")
-  .addEventListener(
-    "change",
-    renderLargeFiles
-  );
-
-
-document
-  .getElementById("oldSearch")
-  .addEventListener(
-    "input",
-    renderOldFiles
-  );
-
-
-document
-  .getElementById("oldSort")
-  .addEventListener(
-    "change",
-    renderOldFiles
-  );
-
-
-/* =========================================================
+/* -----------------------------
    INITIAL STATE
-   ========================================================= */
+----------------------------- */
 
-renderEverything();
+document.getElementById(
+  "totalFiles"
+).textContent = "0";
+
+document.getElementById(
+  "totalSize"
+).textContent = "0 B";
+
+document.getElementById(
+  "largeCount"
+).textContent = "0";
+
+document.getElementById(
+  "duplicateCount"
+).textContent = "0";
