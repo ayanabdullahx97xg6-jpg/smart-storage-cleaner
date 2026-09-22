@@ -1012,12 +1012,14 @@ async function calculateHash(file) {
 
 
   /*
-    Use SHA-256.
+    Duplicate detection uses a two-stage fingerprint:
 
-    For files under 100 MB, normal arrayBuffer
-    is acceptable.
+    1. Small files: full SHA-256.
+    2. Large files: first + middle + last chunks.
 
-    Larger files are hashed in chunks.
+    The large-file fingerprint is only a candidate key.
+    Exact byte comparison below is used before a file is
+    reported as a real duplicate.
   */
 
   const CHUNK_SIZE =
@@ -1025,15 +1027,6 @@ async function calculateHash(file) {
 
 
   try {
-
-    /*
-      crypto.subtle.digest requires the entire
-      input, so for very large files we create
-      a sampled fingerprint instead.
-
-      This is intentionally NOT called a cryptographic
-      duplicate proof for huge files.
-    */
 
     if (file.size <= 100 * 1024 * 1024) {
 
@@ -1061,47 +1054,29 @@ async function calculateHash(file) {
           )
           .join("");
 
-
       file.hash =
-        `sha256:${hashHex}`;
+        `full-sha256:${hashHex}`;
 
       return file.hash;
 
     }
 
 
-    /*
-      Large-file fingerprint:
-      first chunk + middle chunk + last chunk.
-
-      Same size + same sampled content means
-      "possible duplicate", not guaranteed duplicate.
-    */
-
     const positions = [
-
       0,
-
       Math.max(
         0,
-        Math.floor(
-          file.size / 2
-        ) -
-        Math.floor(
-          CHUNK_SIZE / 2
-        )
+        Math.floor(file.size / 2) -
+        Math.floor(CHUNK_SIZE / 2)
       ),
-
       Math.max(
         0,
         file.size - CHUNK_SIZE
       )
-
     ];
 
 
     const buffers = [];
-
 
     for (const start of positions) {
 
@@ -1111,13 +1086,10 @@ async function calculateHash(file) {
           start + CHUNK_SIZE
         );
 
-
       const buffer =
-        await file.slice(
-          start,
-          end
-        ).arrayBuffer();
-
+        await file.file
+          .slice(start, end)
+          .arrayBuffer();
 
       buffers.push(
         new Uint8Array(buffer)
@@ -1129,19 +1101,15 @@ async function calculateHash(file) {
     let combinedLength = 0;
 
     for (const buffer of buffers) {
-      combinedLength +=
-        buffer.length;
+      combinedLength += buffer.length;
     }
 
 
     const combined =
-      new Uint8Array(
-        combinedLength
-      );
+      new Uint8Array(combinedLength);
 
 
     let offset = 0;
-
 
     for (const buffer of buffers) {
 
@@ -1150,8 +1118,7 @@ async function calculateHash(file) {
         offset
       );
 
-      offset +=
-        buffer.length;
+      offset += buffer.length;
 
     }
 
@@ -1194,6 +1161,88 @@ async function calculateHash(file) {
 }
 
 
+async function filesAreIdentical(a, b) {
+
+  if (a.size !== b.size) {
+    return false;
+  }
+
+
+  const CHUNK_SIZE =
+    4 * 1024 * 1024;
+
+
+  try {
+
+    /*
+      Compare the actual bytes in chunks.
+
+      This avoids loading a huge duplicate pair into RAM
+      and makes the final result a real content comparison,
+      not just a filename/size guess.
+    */
+
+    for (
+      let start = 0;
+      start < a.size;
+      start += CHUNK_SIZE
+    ) {
+
+      const end =
+        Math.min(
+          a.size,
+          start + CHUNK_SIZE
+        );
+
+
+      const [aBuffer, bBuffer] =
+        await Promise.all([
+          a.file.slice(start, end).arrayBuffer(),
+          b.file.slice(start, end).arrayBuffer()
+        ]);
+
+
+      const aBytes =
+        new Uint8Array(aBuffer);
+
+      const bBytes =
+        new Uint8Array(bBuffer);
+
+
+      if (aBytes.length !== bBytes.length) {
+        return false;
+      }
+
+
+      for (
+        let i = 0;
+        i < aBytes.length;
+        i++
+      ) {
+
+        if (aBytes[i] !== bBytes[i]) {
+          return false;
+        }
+
+      }
+
+
+      await sleep(0);
+
+    }
+
+
+    return true;
+
+  } catch (error) {
+
+    return false;
+
+  }
+
+}
+
+
 async function analyzeDuplicates() {
 
   confirmedDuplicateGroups = [];
@@ -1214,14 +1263,6 @@ async function analyzeDuplicates() {
   }
 
 
-  /*
-    Hash every same-size candidate group.
-
-    Files under 100 MB get a full SHA-256 hash.
-    Larger files use the existing sampled fingerprint
-    to avoid loading huge files into browser memory.
-  */
-
   for (
     let groupIndex = 0;
     groupIndex < candidates.length;
@@ -1232,75 +1273,118 @@ async function analyzeDuplicates() {
       candidates[groupIndex];
 
 
-    const hashMap =
+    const fingerprintMap =
       new Map();
 
 
+    /*
+      First split same-size files by their fingerprint.
+      This keeps the expensive exact comparison limited
+      to files that actually look alike.
+    */
+
     for (const item of candidate.files) {
 
-      const hash =
-        await calculateHash(
-          item
-        );
+      const fingerprint =
+        await calculateHash(item);
 
 
-      if (!hash) {
+      if (!fingerprint) {
         continue;
       }
 
 
-      if (!hashMap.has(hash)) {
+      if (!fingerprintMap.has(fingerprint)) {
 
-        hashMap.set(
-          hash,
+        fingerprintMap.set(
+          fingerprint,
           []
         );
 
       }
 
 
-      hashMap
-        .get(hash)
+      fingerprintMap
+        .get(fingerprint)
         .push(item);
 
     }
 
 
-    for (const [
-      hash,
-      files
-    ] of hashMap.entries()) {
+    for (const files of fingerprintMap.values()) {
 
-      if (files.length > 1) {
+      if (files.length < 2) {
+        continue;
+      }
 
-        confirmedDuplicateGroups.push({
-          hash,
-          files
-        });
+
+      const confirmedGroups = [];
+
+
+      for (const item of files) {
+
+        let placed = false;
+
+
+        for (const group of confirmedGroups) {
+
+          if (
+            await filesAreIdentical(
+              item,
+              group[0]
+            )
+          ) {
+
+            group.push(item);
+            placed = true;
+            break;
+
+          }
+
+        }
+
+
+        if (!placed) {
+
+          confirmedGroups.push([
+            item
+          ]);
+
+        }
+
+      }
+
+
+      for (const group of confirmedGroups) {
+
+        if (group.length > 1) {
+
+          confirmedDuplicateGroups.push({
+            hash: "verified",
+            files: group
+          });
+
+        }
 
       }
 
     }
 
 
-    if (
-      groupIndex % 3 === 0
-    ) {
-
-      const progress =
-        88 +
-        Math.round(
-          ((groupIndex + 1) / candidates.length) * 8
-        );
-
-      updateProgress(
-        Math.min(progress, 96),
-        `Checking duplicate group ${groupIndex + 1} of ${candidates.length}`
+    const progress =
+      88 +
+      Math.round(
+        ((groupIndex + 1) / candidates.length) * 8
       );
 
-      await sleep(0);
 
-    }
+    updateProgress(
+      Math.min(progress, 96),
+      `Checking duplicate group ${groupIndex + 1} of ${candidates.length}`
+    );
+
+
+    await sleep(0);
 
   }
 
@@ -1308,6 +1392,7 @@ async function analyzeDuplicates() {
   duplicateAnalysisReady = true;
 
 }
+
 
 
 function renderDuplicates() {
