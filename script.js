@@ -1031,7 +1031,7 @@ async function calculateHash(file) {
     if (file.size <= 100 * 1024 * 1024) {
 
       const buffer =
-        await file.arrayBuffer();
+        await file.file.arrayBuffer();
 
       const hashBuffer =
         await crypto.subtle.digest(
