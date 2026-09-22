@@ -1,508 +1,725 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
   <title>Storage Cleaner</title>
-  <meta name="description" content="Smart offline storage analysis and cleanup assistant">
-  <link rel="stylesheet" href="style.css">
+
+  <link rel="stylesheet" href="style.css" />
 </head>
 
 <body>
 
-<div class="app">
+  <!-- Hidden native file/folder pickers -->
+  <input
+    id="fileInput"
+    type="file"
+    multiple
+    hidden
+  />
 
-  <!-- SIDEBAR -->
-  <aside class="sidebar">
+  <input
+    id="folderInput"
+    type="file"
+    webkitdirectory
+    directory
+    multiple
+    hidden
+  />
 
-    <div class="brand">
-      <div class="brand-icon">✦</div>
-      <div>
-        <strong>Storage Cleaner</strong>
-        <span>Smart · Private · Offline</span>
-      </div>
-    </div>
+  <div class="app">
 
-    <nav>
-      <button class="nav-item active" data-page="dashboard">
-        <span>▦</span> Dashboard
-      </button>
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
 
-      <button class="nav-item" data-page="large">
-        <span>◇</span> Large Files
-      </button>
-
-      <button class="nav-item" data-page="duplicates">
-        <span>▥</span> Duplicates
-      </button>
-
-      <button class="nav-item" data-page="old">
-        <span>◷</span> Old Files
-      </button>
-
-      <button class="nav-item" data-page="security">
-        <span>◉</span> Security Check
-      </button>
-
-      <button class="nav-item" data-page="types">
-        <span>◌</span> File Types
-      </button>
-
-      <button class="nav-item" data-page="folders">
-        <span>▤</span> Folders
-      </button>
-    </nav>
-
-    <div class="privacy-card">
-      <div class="lock">🔒</div>
-      <div>
-        <strong>Private Scan</strong>
-        <span>Your files stay in your browser.</span>
-      </div>
-    </div>
-
-  </aside>
-
-
-  <!-- MAIN -->
-  <main class="main">
-
-    <!-- HEADER -->
-    <header class="topbar">
-
-      <div>
-        <div class="eyebrow">SMART STORAGE ANALYSIS</div>
-        <h1>Storage Cleaner</h1>
-        <p>Find what's taking up space and understand your storage.</p>
-      </div>
-
-      <div class="actions">
-        <button id="folderBtn" class="primary-btn">
-          📁 Select Folder
-        </button>
-
-        <button id="fileBtn" class="secondary-btn">
-          📄 Select Files
-        </button>
-
-        <button id="rescanBtn" class="secondary-btn hidden">
-          ↻ Rescan
-        </button>
-      </div>
-
-    </header>
-
-
-    <!-- Hidden inputs -->
-    <input
-      id="folderInput"
-      type="file"
-      webkitdirectory
-      directory
-      multiple
-      hidden
-    >
-
-    <input
-      id="fileInput"
-      type="file"
-      multiple
-      hidden
-    >
-
-
-    <!-- PAGES -->
-
-    <!-- DASHBOARD -->
-    <section id="page-dashboard" class="page active">
-
-      <div class="hero-card">
+      <div class="brand">
+        <div class="brand-icon">S</div>
 
         <div>
-          <div class="eyebrow">STORAGE OVERVIEW</div>
+          <h1>Storage Cleaner</h1>
+          <span>Smart Storage Analysis</span>
+        </div>
+      </div>
 
-          <h2 id="heroTitle">
-            Understand your files before cleaning.
-          </h2>
+      <nav class="navigation">
 
-          <p id="heroText">
-            Select a folder or files to discover large files,
-            duplicates, old files and security signals.
+        <button class="nav-item active" data-page="dashboard">
+          <span class="nav-icon">⌂</span>
+          <span>Dashboard</span>
+        </button>
+
+        <button class="nav-item" data-page="large">
+          <span class="nav-icon">◉</span>
+          <span>Large Files</span>
+        </button>
+
+        <button class="nav-item" data-page="duplicates">
+          <span class="nav-icon">◈</span>
+          <span>Duplicates</span>
+        </button>
+
+        <button class="nav-item" data-page="old">
+          <span class="nav-icon">◷</span>
+          <span>Old Files</span>
+        </button>
+
+        <button class="nav-item" data-page="types">
+          <span class="nav-icon">▦</span>
+          <span>File Types</span>
+        </button>
+
+        <button class="nav-item" data-page="folders">
+          <span class="nav-icon">▱</span>
+          <span>Folders</span>
+        </button>
+
+        <button class="nav-item" data-page="security">
+          <span class="nav-icon">◇</span>
+          <span>Security Check</span>
+        </button>
+
+      </nav>
+
+      <div class="sidebar-bottom">
+
+        <div class="privacy-card">
+          <div class="privacy-icon">✓</div>
+
+          <div>
+            <strong>Private Analysis</strong>
+            <p>
+              Files are analyzed locally in your browser.
+            </p>
+          </div>
+        </div>
+
+        <div class="version">
+          Storage Cleaner • Offline Mode
+        </div>
+
+      </div>
+
+    </aside>
+
+
+    <!-- MAIN -->
+    <main class="main">
+
+      <!-- TOP BAR -->
+      <header class="topbar">
+
+        <div>
+          <h2 id="pageTitle">Dashboard</h2>
+          <p id="pageSubtitle">
+            Understand what is using your storage.
           </p>
         </div>
 
-        <div id="scanStatus" class="scan-status">
-          READY
+        <div class="top-actions">
+
+          <button
+            id="selectFolderBtn"
+            class="btn secondary"
+            type="button"
+          >
+            <span>＋</span>
+            Select Folder
+          </button>
+
+          <button
+            id="selectFilesBtn"
+            class="btn primary"
+            type="button"
+          >
+            <span>＋</span>
+            Select Files
+          </button>
+
+          <button
+            id="rescanBtn"
+            class="btn ghost"
+            type="button"
+            title="Clear current scan"
+          >
+            ↻
+          </button>
+
         </div>
 
+      </header>
+
+
+      <!-- SCAN STATUS -->
+      <div
+        id="scanStatus"
+        class="scan-status hidden"
+      >
+        <div class="scan-status-left">
+
+          <div class="loader"></div>
+
+          <div>
+            <strong id="scanTitle">
+              Analyzing files...
+            </strong>
+
+            <span id="scanText">
+              Please wait
+            </span>
+          </div>
+
+        </div>
+
+        <div class="scan-progress-wrapper">
+
+          <div class="progress">
+            <div
+              id="scanProgress"
+              class="progress-bar"
+            ></div>
+          </div>
+
+          <span id="scanPercent">0%</span>
+
+        </div>
       </div>
 
 
-      <!-- STATS -->
-      <div class="stats">
+      <!-- DASHBOARD -->
+      <section
+        id="page-dashboard"
+        class="page active"
+      >
 
-        <div class="stat-card">
-          <div class="stat-icon">▣</div>
+        <div class="hero">
+
           <div>
-            <span>Total Files</span>
-            <strong id="totalFiles">0</strong>
+            <span class="eyebrow">
+              SMART STORAGE ANALYSIS
+            </span>
+
+            <h3>
+              See where your storage
+              <span>really goes.</span>
+            </h3>
+
+            <p>
+              Select files or a folder and Storage Cleaner
+              will analyze large, duplicate, old and
+              potentially unnecessary files.
+            </p>
           </div>
+
+          <div class="hero-visual">
+            <div class="orbit orbit-one"></div>
+            <div class="orbit orbit-two"></div>
+            <div class="hero-core">S</div>
+          </div>
+
         </div>
 
-        <div class="stat-card">
-          <div class="stat-icon">◇</div>
-          <div>
-            <span>Total Size</span>
-            <strong id="totalSize">0 B</strong>
+
+        <!-- STATS -->
+        <div class="stats-grid">
+
+          <div class="stat-card">
+
+            <div class="stat-top">
+              <span>Total Files</span>
+              <div class="stat-icon">▤</div>
+            </div>
+
+            <strong id="totalFiles">
+              0
+            </strong>
+
+            <small>
+              Files analyzed
+            </small>
+
           </div>
+
+
+          <div class="stat-card">
+
+            <div class="stat-top">
+              <span>Total Size</span>
+              <div class="stat-icon">◉</div>
+            </div>
+
+            <strong id="totalSize">
+              0 B
+            </strong>
+
+            <small>
+              Selected storage
+            </small>
+
+          </div>
+
+
+          <div class="stat-card">
+
+            <div class="stat-top">
+              <span>Large Files</span>
+              <div class="stat-icon">▲</div>
+            </div>
+
+            <strong id="largeFilesCount">
+              0
+            </strong>
+
+            <small id="largeFilesSize">
+              0 B
+            </small>
+
+          </div>
+
+
+          <div class="stat-card">
+
+            <div class="stat-top">
+              <span>Duplicates</span>
+              <div class="stat-icon">◇</div>
+            </div>
+
+            <strong id="duplicateCount">
+              0
+            </strong>
+
+            <small id="duplicateSize">
+              0 B potential extra space
+            </small>
+
+          </div>
+
         </div>
 
-        <div class="stat-card">
-          <div class="stat-icon">!</div>
-          <div>
-            <span>Large Files</span>
-            <strong id="largeCount">0</strong>
+
+        <!-- DASHBOARD CONTENT -->
+        <div class="dashboard-grid">
+
+          <div class="panel">
+
+            <div class="panel-header">
+
+              <div>
+                <h3>What needs attention?</h3>
+                <p>
+                  Storage issues detected in your scan.
+                </p>
+              </div>
+
+            </div>
+
+            <div id="attentionList" class="attention-list">
+
+              <div class="empty-state small">
+                <div class="empty-icon">⌕</div>
+                <strong>No scan yet</strong>
+                <span>
+                  Select files or a folder to begin.
+                </span>
+              </div>
+
+            </div>
+
           </div>
+
+
+          <div class="panel">
+
+            <div class="panel-header">
+
+              <div>
+                <h3>Where is your space going?</h3>
+                <p>
+                  Storage distribution by file type.
+                </p>
+              </div>
+
+            </div>
+
+            <div id="typeSummary">
+              <div class="empty-state small">
+                <div class="empty-icon">◌</div>
+                <strong>Nothing to analyze</strong>
+                <span>
+                  Your storage breakdown will appear here.
+                </span>
+              </div>
+            </div>
+
+          </div>
+
         </div>
 
-        <div class="stat-card">
-          <div class="stat-icon">▥</div>
+      </section>
+
+
+      <!-- LARGE FILES -->
+      <section
+        id="page-large"
+        class="page"
+      >
+
+        <div class="page-header">
+
           <div>
-            <span>Duplicates</span>
-            <strong id="duplicateCount">0</strong>
+            <span class="eyebrow">STORAGE HEAVYWEIGHTS</span>
+
+            <h3>Large Files</h3>
+
+            <p>
+              Find files that consume significant storage.
+            </p>
           </div>
+
+          <div class="filter-box">
+
+            <label for="largeThreshold">
+              Show files larger than
+            </label>
+
+            <select id="largeThreshold">
+
+              <option value="104857600">
+                100 MB
+              </option>
+
+              <option value="524288000">
+                500 MB
+              </option>
+
+              <option value="1073741824" selected>
+                1 GB
+              </option>
+
+              <option value="5368709120">
+                5 GB
+              </option>
+
+              <option value="10737418240">
+                10 GB
+              </option>
+
+            </select>
+
+          </div>
+
         </div>
 
-      </div>
 
-
-      <div class="dashboard-grid">
-
-        <!-- ATTENTION -->
         <div class="panel">
 
-          <div class="panel-heading">
+          <div
+            id="largeFilesList"
+            class="file-list"
+          >
+
+            <div class="empty-state">
+              <div class="empty-icon">◉</div>
+
+              <strong>
+                No large files found
+              </strong>
+
+              <span>
+                Select files or a folder first.
+              </span>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- DUPLICATES -->
+      <section
+        id="page-duplicates"
+        class="page"
+      >
+
+        <div class="page-header">
+
+          <div>
+            <span class="eyebrow">SPACE RECOVERY</span>
+
+            <h3>Duplicate Files</h3>
+
+            <p>
+              Files with identical content are grouped together.
+            </p>
+          </div>
+
+        </div>
+
+
+        <div class="panel">
+
+          <div class="panel-header">
+
             <div>
-              <div class="eyebrow">ANALYSIS</div>
-              <h3>What needs attention?</h3>
+              <h3>Duplicate Groups</h3>
+              <p id="duplicateSummary">
+                No duplicate analysis yet.
+              </p>
             </div>
+
           </div>
 
-          <div class="attention-list">
+          <div
+            id="duplicatesList"
+            class="duplicate-list"
+          >
 
-            <button class="attention-row" data-page="large">
-              <span class="row-icon">◇</span>
-              <span>
-                <strong>Large Files</strong>
-                <small>Files larger than 100 MB</small>
-              </span>
-              <b id="attentionLarge">0 ›</b>
-            </button>
+            <div class="empty-state">
+              <div class="empty-icon">◇</div>
 
-            <button class="attention-row" data-page="duplicates">
-              <span class="row-icon">▥</span>
-              <span>
-                <strong>Duplicate Files</strong>
-                <small>Files with identical size/content signals</small>
-              </span>
-              <b id="attentionDuplicates">0 ›</b>
-            </button>
+              <strong>
+                No duplicates found
+              </strong>
 
-            <button class="attention-row" data-page="old">
-              <span class="row-icon">◷</span>
               <span>
-                <strong>Old Files</strong>
-                <small>Files not modified for 180+ days</small>
+                Select files or a folder to analyze duplicates.
               </span>
-              <b id="attentionOld">0 ›</b>
-            </button>
 
-            <button class="attention-row" data-page="security">
-              <span class="row-icon">🛡</span>
-              <span>
-                <strong>Security Check</strong>
-                <small>Potentially suspicious file patterns</small>
-              </span>
-              <b id="attentionSecurity">0 ›</b>
-            </button>
+            </div>
 
           </div>
 
         </div>
 
+      </section>
 
-        <!-- STORAGE MIX -->
+
+      <!-- OLD FILES -->
+      <section
+        id="page-old"
+        class="page"
+      >
+
+        <div class="page-header">
+
+          <div>
+            <span class="eyebrow">CLEANUP CANDIDATES</span>
+
+            <h3>Old Files</h3>
+
+            <p>
+              Files that have not been modified for a long time.
+            </p>
+          </div>
+
+        </div>
+
+
         <div class="panel">
 
-          <div class="eyebrow">STORAGE MIX</div>
-          <h3>Where is your space going?</h3>
+          <div
+            id="oldFilesList"
+            class="file-list"
+          >
 
-          <div id="storageMix" class="storage-mix">
-            <div class="empty-small">
-              Scan files to see storage distribution.
+            <div class="empty-state">
+              <div class="empty-icon">◷</div>
+
+              <strong>
+                No old files found
+              </strong>
+
+              <span>
+                Select files or a folder to begin.
+              </span>
+
             </div>
+
           </div>
 
         </div>
 
-      </div>
+      </section>
 
 
-      <!-- SMART INSIGHT -->
-      <div class="smart-insight">
+      <!-- FILE TYPES -->
+      <section
+        id="page-types"
+        class="page"
+      >
 
-        <div class="insight-icon">✦</div>
+        <div class="page-header">
 
-        <div>
-          <div class="eyebrow">SMART INSIGHT</div>
-          <h3 id="smartTitle">Your storage is waiting to be analyzed.</h3>
-          <p id="smartText">
-            Select a folder or files and Storage Cleaner will
-            explain what deserves your attention.
-          </p>
+          <div>
+            <span class="eyebrow">STORAGE BREAKDOWN</span>
+
+            <h3>File Types</h3>
+
+            <p>
+              Understand which categories consume your storage.
+            </p>
+          </div>
+
         </div>
 
-      </div>
 
-    </section>
-
-
-    <!-- LARGE FILES -->
-    <section id="page-large" class="page">
-
-      <div class="page-heading">
-        <div>
-          <div class="eyebrow">SPACE ANALYSIS</div>
-          <h2>Large Files</h2>
-          <p>Files larger than <strong>100 MB</strong>.</p>
-        </div>
-      </div>
-
-      <div class="toolbar">
-
-        <input
-          id="largeSearch"
-          type="search"
-          placeholder="Search large files..."
+        <div
+          id="fileTypesGrid"
+          class="type-grid"
         >
 
-        <select id="largeSort">
-          <option value="size-desc">Largest first</option>
-          <option value="size-asc">Smallest first</option>
-          <option value="name">Name</option>
-        </select>
+          <div class="empty-state">
+            <div class="empty-icon">▦</div>
 
-      </div>
+            <strong>
+              No file types yet
+            </strong>
 
-      <div id="largeList" class="results">
-        <div class="empty-state">
-          No large files found.
-        </div>
-      </div>
+            <span>
+              Scan some files to see the breakdown.
+            </span>
 
-    </section>
+          </div>
 
-
-    <!-- DUPLICATES -->
-    <section id="page-duplicates" class="page">
-
-      <div class="page-heading">
-        <div>
-          <div class="eyebrow">CONTENT ANALYSIS</div>
-          <h2>Duplicate Files</h2>
-          <p>Files with matching content signals.</p>
-        </div>
-      </div>
-
-      <div class="mini-stats">
-
-        <div>
-          <span>Duplicate Groups</span>
-          <strong id="duplicateGroups">0</strong>
         </div>
 
-        <div>
-          <span>Potential Extra Space</span>
-          <strong id="duplicateSpace">0 B</strong>
+      </section>
+
+
+      <!-- FOLDERS -->
+      <section
+        id="page-folders"
+        class="page"
+      >
+
+        <div class="page-header">
+
+          <div>
+            <span class="eyebrow">SPACE MAP</span>
+
+            <h3>Folders</h3>
+
+            <p>
+              See which folders contain the most data.
+            </p>
+          </div>
+
         </div>
 
-      </div>
 
-      <div id="duplicateList" class="results">
-        <div class="empty-state">
-          No duplicate groups found.
+        <div class="panel">
+
+          <div
+            id="foldersList"
+            class="folder-list"
+          >
+
+            <div class="empty-state">
+              <div class="empty-icon">▱</div>
+
+              <strong>
+                No folders analyzed
+              </strong>
+
+              <span>
+                Select a folder to map its storage usage.
+              </span>
+
+            </div>
+
+          </div>
+
         </div>
-      </div>
 
-    </section>
+      </section>
 
 
-    <!-- OLD FILES -->
-    <section id="page-old" class="page">
+      <!-- SECURITY -->
+      <section
+        id="page-security"
+        class="page"
+      >
 
-      <div class="page-heading">
-        <div>
-          <div class="eyebrow">TIME ANALYSIS</div>
-          <h2>Old Files</h2>
-          <p>Files that haven't been modified for 180+ days.</p>
+        <div class="page-header">
+
+          <div>
+            <span class="eyebrow">LOCAL RISK ANALYSIS</span>
+
+            <h3>Security Check</h3>
+
+            <p>
+              Identify executable and script files that may deserve review.
+            </p>
+          </div>
+
         </div>
-      </div>
 
-      <div class="toolbar">
 
-        <input
-          id="oldSearch"
-          type="search"
-          placeholder="Search old files..."
+        <div class="security-notice">
+
+          <div class="notice-icon">
+            !
+          </div>
+
+          <div>
+            <strong>
+              This is not an antivirus scan
+            </strong>
+
+            <p>
+              The browser cannot determine whether a file contains malware.
+              This section only identifies file types and names that may
+              deserve additional review.
+            </p>
+          </div>
+
+        </div>
+
+
+        <div
+          id="securityList"
+          class="security-grid"
         >
 
-        <select id="oldSort">
-          <option value="oldest">Oldest first</option>
-          <option value="newest">Newest first</option>
-          <option value="size">Largest first</option>
-        </select>
+          <div class="empty-state">
+            <div class="empty-icon">◇</div>
 
-      </div>
+            <strong>
+              No security signals
+            </strong>
 
-      <div id="oldList" class="results">
-        <div class="empty-state">
-          No old files found.
-        </div>
-      </div>
+            <span>
+              Scan files to analyze executable and script extensions.
+            </span>
 
-    </section>
+          </div>
 
-
-    <!-- SECURITY -->
-    <section id="page-security" class="page">
-
-      <div class="page-heading">
-        <div>
-          <div class="eyebrow">SECURITY ANALYSIS</div>
-          <h2>Security Check</h2>
-          <p>
-            Looks for suspicious file patterns without uploading your files.
-          </p>
-        </div>
-      </div>
-
-
-      <div class="security-banner">
-
-        <div class="security-shield">🛡</div>
-
-        <div>
-          <strong>Privacy-first security signals</strong>
-
-          <p>
-            This is not a replacement for Windows Security or an antivirus.
-            It checks file names, extensions and patterns that deserve review.
-          </p>
         </div>
 
-      </div>
+      </section>
+
+    </main>
+
+  </div>
 
 
-      <div class="security-summary">
-
-        <div class="security-card safe">
-          <span>Files Checked</span>
-          <strong id="securityChecked">0</strong>
-        </div>
-
-        <div class="security-card warning">
-          <span>Needs Review</span>
-          <strong id="securityWarnings">0</strong>
-        </div>
-
-        <div class="security-card">
-          <span>High-Risk Patterns</span>
-          <strong id="securityHigh">0</strong>
-        </div>
-
-      </div>
+  <!-- TOAST -->
+  <div
+    id="toast"
+    class="toast"
+  >
+    <span id="toastIcon">✓</span>
+    <span id="toastText">Done</span>
+  </div>
 
 
-      <div id="securityList" class="results">
-
-        <div class="empty-state">
-          Scan files to perform the security check.
-        </div>
-
-      </div>
-
-    </section>
-
-
-    <!-- FILE TYPES -->
-    <section id="page-types" class="page">
-
-      <div class="page-heading">
-        <div>
-          <div class="eyebrow">CONTENT BREAKDOWN</div>
-          <h2>File Types</h2>
-          <p>See what kinds of files consume your storage.</p>
-        </div>
-      </div>
-
-      <div id="typesList" class="type-grid">
-        <div class="empty-state">
-          Scan files to see file types.
-        </div>
-      </div>
-
-    </section>
-
-
-    <!-- FOLDERS -->
-    <section id="page-folders" class="page">
-
-      <div class="page-heading">
-        <div>
-          <div class="eyebrow">FOLDER ANALYSIS</div>
-          <h2>Folder Storage</h2>
-          <p>See which folders contain the most data.</p>
-        </div>
-      </div>
-
-      <div id="foldersList" class="results">
-        <div class="empty-state">
-          Scan a folder to analyze storage by folder.
-        </div>
-      </div>
-
-    </section>
-
-
-    <!-- SCANNING OVERLAY -->
-    <div id="scanOverlay" class="overlay hidden">
-
-      <div class="scan-box">
-
-        <div class="loader"></div>
-
-        <h3>Analyzing your files...</h3>
-
-        <p id="scanProgress">
-          Preparing scan...
-        </p>
-
-        <div class="progress-track">
-          <div id="progressBar" class="progress-bar"></div>
-        </div>
-
-      </div>
-
-    </div>
-
-
-    <div id="toast" class="toast"></div>
-
-  </main>
-
-</div>
-
-<script src="script.js"></script>
+  <script src="script.js"></script>
 
 </body>
 </html>
